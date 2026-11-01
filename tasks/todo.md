@@ -8,7 +8,7 @@ Goal: ship Vital v1 per docs/superpowers/specs/2026-11-02-vital-design.md, follo
 - [x] 4 Process sampler, grouping, protection
 - [x] 5 Storage
 - [x] 6 Thermal and fans
-- [ ] 7 Process actions
+- [x] 7 Process actions
 - [ ] 8 Sampler orchestration
 - [ ] 9 UI
 - [ ] 10 Icon and packaging

@@ -91,14 +91,23 @@ enum CLI {
     }
 
     private static func probeStorage() {
+        // --workers=N overrides the worker count, for measuring.
+        let workers = CommandLine.arguments.first { $0.hasPrefix("--workers=") }.flatMap { Int($0.dropFirst(10)) }
+            ?? StorageScanner.defaultConcurrency
         let start = Date()
-        let result = StorageScanner().scan(progress: { p in
-            if let last = p.categories.last {
-                print(String(format: "%6.1fs  %@ %@", Date().timeIntervalSince(start), last.name, Format.bytes(last.bytes, base: .decimal)))
+        var reported = Set<String>()
+        let qos: QualityOfService = CommandLine.arguments.contains("--background") ? .background : .utility
+        let result = StorageScanner(concurrency: workers, qos: qos).scan(progress: { p in
+            for c in p.categories where c.status == .done && !reported.contains(c.name) {
+                reported.insert(c.name)
+                print(String(format: "%6.1fs  %@ %@%@", Date().timeIntervalSince(start), c.name,
+                             Format.bytes(c.bytes, base: .decimal), c.partial ? " (partial)" : ""))
+                fflush(stdout)
             }
         })
         guard let r = result, let cap = StorageSampler.capacity() else { return }
-        print("used \(Format.bytes(cap.usedBytes, base: .decimal)), other \(Format.bytes(r.otherBytes(usedBytes: cap.usedBytes), base: .decimal)), partial=\(r.partial)")
+        print(String(format: "total %.1fs with %d workers at %@ QoS", Date().timeIntervalSince(start), workers, qos == .background ? "background" : "utility"))
+        print("used \(Format.bytes(cap.usedBytes, base: .decimal)), other \(Format.bytes(r.otherBytes(usedBytes: cap.usedBytes), base: .decimal)), partial=\(r.partial), full disk access=\(StorageSampler.hasFullDiskAccess().map { "\($0)" } ?? "unknown")")
         for c in r.categories.sorted(by: { $0.bytes > $1.bytes }).prefix(3) {
             print(c.name, c.top.prefix(3).map { "\(($0.path as NSString).lastPathComponent) \(Format.bytes($0.bytes, base: .decimal))" }.joined(separator: ", "))
         }

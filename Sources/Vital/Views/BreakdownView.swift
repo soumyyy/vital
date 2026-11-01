@@ -160,72 +160,158 @@ struct PillButton: ButtonStyle {
 
 struct StorageBreakdownView: View {
     @ObservedObject var model: PanelModel
+    @ObservedObject var store: StorageStore
+
+    init(model: PanelModel) {
+        self.model = model
+        self.store = model.storage
+    }
 
     var body: some View {
         VStack(spacing: 8) {
-            if let b = model.breakdown {
-                let used = model.snapshot.storage?.usedBytes ?? 0
-                let cats = b.categories.sorted { $0.bytes > $1.bytes }
+            CapacityCard(capacity: store.capacity ?? model.snapshot.storage, store: store)
+            if let b = store.breakdown {
+                let used = (store.capacity ?? model.snapshot.storage)?.usedBytes ?? 0
                 VStack(spacing: 0) {
-                    ForEach(cats) { c in
-                        CategoryRow(model: model, category: c, used: used)
+                    ForEach(ordered(b.categories)) { c in
+                        CategoryRow(model: model, category: c)
                         Divider().opacity(0.4)
                     }
                     if b.isComplete {
-                        let other = b.otherBytes(usedBytes: used)
-                        HStack {
-                            Text("Other").font(.system(size: 12, weight: .medium))
-                            Text("snapshots, purgeable, system data").font(.system(size: 10)).foregroundStyle(.secondary)
+                        HStack(alignment: .firstTextBaseline) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Other").font(.system(size: 12, weight: .medium))
+                                Text("System data, snapshots, swap, unreadable folders")
+                                    .font(.system(size: 10)).foregroundStyle(.secondary)
+                            }
                             Spacer()
-                            Text(Format.bytes(other, base: .decimal)).font(.system(size: 12)).monospacedDigit()
+                            Text(Format.bytes(b.otherBytes(usedBytes: used), base: .decimal)).font(.system(size: 12)).monospacedDigit()
                         }
                         .padding(.vertical, 6)
+                        .accessibilityElement(children: .combine)
                     }
                 }
                 .card()
-                if model.scanning {
-                    HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Scanning…").font(.system(size: 11)).foregroundStyle(.secondary) }
-                }
-                if b.partial {
-                    Button {
-                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
-                    } label: {
-                        Text("Partial: some folders are unreadable. Grant Full Disk Access to see everything.")
-                            .font(.system(size: 10)).multilineTextAlignment(.leading)
-                    }
-                    .buttonStyle(.plain).foregroundStyle(Palette.yellow)
-                }
-            } else {
-                VStack(spacing: 6) { ProgressView().controlSize(.small); Text("Scanning…").font(.system(size: 11)).foregroundStyle(.secondary) }
-                    .frame(maxWidth: .infinity, minHeight: 80)
+                notes(b)
             }
         }
+        .animation(.easeOut(duration: 0.2), value: store.breakdown?.doneCount)
+    }
+
+    /// Finished categories by size, then the one being scanned, then those waiting.
+    private func ordered(_ cats: [StorageCategory]) -> [StorageCategory] {
+        let rank: (ScanStatus) -> Int = { $0 == .done ? 0 : ($0 == .scanning ? 1 : 2) }
+        return cats.enumerated().sorted { a, b in
+            let ra = rank(a.element.status), rb = rank(b.element.status)
+            if ra != rb { return ra < rb }
+            if ra == 0 && a.element.bytes != b.element.bytes { return a.element.bytes > b.element.bytes }
+            return a.offset < b.offset
+        }.map(\.element)
+    }
+
+    @ViewBuilder private func notes(_ b: StorageBreakdown) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if store.fullDiskAccess == false {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Some folders need Full Disk Access", systemImage: "lock.fill")
+                        .font(.system(size: 11, weight: .medium))
+                    Text("Mail, Messages, Safari and other apps' data cannot be read, so they count toward Other. Grant access, then reopen Vital.")
+                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Open Privacy Settings") {
+                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
+                    }
+                    .buttonStyle(PillButton())
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .card()
+            } else if b.partial && b.isComplete {
+                Text("Some system folders are readable only by macOS. They count toward Other.")
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+            }
+            Text("Cloud drives (Library/CloudStorage) are skipped: their files are mostly online-only.")
+                .font(.system(size: 10)).foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Used / free for the boot volume, available at once, plus the scan status line.
+struct CapacityCard: View {
+    let capacity: StorageReading?
+    @ObservedObject var store: StorageStore
+
+    var body: some View {
+        VStack(spacing: 6) {
+            if let s = capacity {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("\(Format.bytes(s.usedBytes, base: .decimal)) used").font(.system(size: 12, weight: .semibold))
+                    Text("of \(Format.bytes(s.totalBytes, base: .decimal))").font(.system(size: 11)).foregroundStyle(.secondary)
+                    Spacer()
+                    Text("\(Format.bytes(s.availableBytes, base: .decimal)) free").font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+                .monospacedDigit()
+                UsageBar(fraction: s.usedFraction, color: s.usedFraction < 0.75 ? Palette.green : (s.usedFraction < 0.9 ? Palette.yellow : Palette.red))
+            }
+            HStack(spacing: 6) {
+                if store.scanning {
+                    ProgressView().controlSize(.mini)
+                    Text("Measuring folders · \(store.breakdown?.doneCount ?? 0) of \(store.breakdown?.categories.count ?? 0) done")
+                } else if let b = store.breakdown, b.isComplete {
+                    Text("Folders measured \(ago(b.scannedAt))")
+                } else {
+                    Text("Folder sizes are measured while this tab is open")
+                }
+                Spacer()
+            }
+            .font(.system(size: 10)).foregroundStyle(.secondary)
+        }
+        .card()
+        .accessibilityElement(children: .combine)
+    }
+
+    private func ago(_ d: Date) -> String {
+        let s = Date().timeIntervalSince(d)
+        if s < 60 { return "just now" }
+        let m = Int(s / 60)
+        return m == 1 ? "1 min ago" : "\(m) min ago"
     }
 }
 
 struct CategoryRow: View {
     @ObservedObject var model: PanelModel
     let category: StorageCategory
-    let used: UInt64
 
     private var isOpen: Bool { model.expanded.contains("storage:" + category.name) }
+    private var expandable: Bool { category.status == .done && !category.top.isEmpty }
 
     var body: some View {
         VStack(spacing: 0) {
             Button {
+                guard expandable else { return }
                 let id = "storage:" + category.name
                 if isOpen { model.expanded.remove(id) } else { model.expanded.insert(id) }
             } label: {
-                HStack {
+                HStack(spacing: 6) {
                     Text(category.name).font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(category.status == .waiting ? .secondary : .primary)
+                    if category.partial && category.status == .done {
+                        Image(systemName: "lock.fill").font(.system(size: 9)).foregroundStyle(.tertiary)
+                            .help("Some folders here could not be read")
+                    }
                     Spacer()
-                    Text(Format.bytes(category.bytes, base: .decimal)).font(.system(size: 12)).monospacedDigit()
+                    value
                     Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold)).foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(isOpen ? 90 : 0))
+                        .opacity(expandable ? 1 : 0)
                 }
                 .padding(.vertical, 6).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .accessibilityElement(children: .combine)
+            .accessibilityValue(accessibilityValue)
             if isOpen {
                 ForEach(category.top) { f in
                     HStack {
@@ -235,11 +321,37 @@ struct CategoryRow: View {
                         Button { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: f.path)]) } label: {
                             Image(systemName: "magnifyingglass")
                         }
-                        .buttonStyle(.plain).help("Reveal in Finder")
+                        .buttonStyle(.plain).help("Reveal in Finder").accessibilityLabel("Reveal \((f.path as NSString).lastPathComponent) in Finder")
                     }
                     .font(.system(size: 11)).foregroundStyle(.secondary).padding(.leading, 12).padding(.bottom, 4)
                 }
             }
+        }
+    }
+
+    @ViewBuilder private var value: some View {
+        switch category.status {
+        case .waiting:
+            Text("Waiting").font(.system(size: 11)).foregroundStyle(.tertiary)
+        case .scanning:
+            HStack(spacing: 5) {
+                ProgressView().controlSize(.mini)
+                Text(Format.bytes(category.bytes, base: .decimal) + "…").font(.system(size: 12)).foregroundStyle(.secondary).monospacedDigit()
+            }
+        case .done:
+            if category.bytes == 0 && category.partial {
+                Text("Not readable").font(.system(size: 11)).foregroundStyle(.secondary)
+            } else {
+                Text(Format.bytes(category.bytes, base: .decimal)).font(.system(size: 12)).monospacedDigit()
+            }
+        }
+    }
+
+    private var accessibilityValue: String {
+        switch category.status {
+        case .waiting: return "waiting"
+        case .scanning: return "measuring, \(Format.bytes(category.bytes, base: .decimal)) so far"
+        case .done: return Format.bytes(category.bytes, base: .decimal) + (category.partial ? ", partial" : "")
         }
     }
 }

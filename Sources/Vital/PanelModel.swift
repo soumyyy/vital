@@ -36,14 +36,11 @@ final class PanelModel: ObservableObject {
     @Published var expanded: Set<String> = []
     @Published var pending: PendingAction?
     @Published var toast: String?
-    @Published var breakdown: StorageBreakdown?
-    @Published var scanning = false
 
     let icons = NSCache<NSString, NSImage>()
     private let appState: AppState
     private let actions = ProcessActions()
-    private var scanTask: Task<Void, Never>?
-    private var scanCancelled = AtomicFlag()
+    var storage: StorageStore { appState.storage }
     private var toastTask: Task<Void, Never>?
 
     init(appState: AppState) {
@@ -59,7 +56,7 @@ final class PanelModel: ObservableObject {
 
     func close() {
         appState.onSnapshot = nil
-        cancelScan()
+        storage.cancel()                     // scans run only while the panel is open
         toastTask?.cancel()
     }
 
@@ -138,39 +135,9 @@ final class PanelModel: ObservableObject {
 
     // MARK: storage
 
+    /// Leaving the Storage tab does not cancel the scan: it keeps running until the panel closes.
     private func tabChanged(from old: PanelTab) {
-        if tab == .storage { startScanIfNeeded() } else if old == .storage { cancelScan() }
-    }
-
-    func startScanIfNeeded() {
-        if let b = breakdown, b.isComplete, Date().timeIntervalSince(b.scannedAt) < 600 { return }
-        guard !scanning else { return }
-        scanning = true
-        let flag = AtomicFlag()
-        scanCancelled = flag
-        scanTask = Task.detached(priority: .background) { [weak self] in
-            let result = StorageScanner().scan(progress: { partial in
-                Task { @MainActor [weak self] in if !flag.isSet { self?.breakdown = partial } }
-            }, isCancelled: { flag.isSet })
-            await self?.finishScan(result)
-        }
-    }
-
-    private func finishScan(_ result: StorageBreakdown?) {
-        if let result { breakdown = result }
-        scanning = false
-    }
-
-    func cancelScan() {
-        scanCancelled.set()
-        scanTask?.cancel()
-        scanning = false
+        if tab == .storage { storage.ensureFresh(busy: snapshot.band != .calm) }
     }
 }
 
-final class AtomicFlag: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value = false
-    var isSet: Bool { lock.lock(); defer { lock.unlock() }; return value }
-    func set() { lock.lock(); value = true; lock.unlock() }
-}

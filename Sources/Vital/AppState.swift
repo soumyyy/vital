@@ -5,6 +5,7 @@ import VitalCore
 @MainActor
 final class AppState {
     private(set) var sampler: Sampler!
+    let storage = StorageStore()          // storage breakdown cache: survives panel close
     private(set) var latest = Snapshot.empty
     private(set) var cpuHistory: [Double] = []
     var onSnapshot: ((Snapshot) -> Void)?

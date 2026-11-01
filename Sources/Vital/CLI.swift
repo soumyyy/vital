@@ -8,6 +8,7 @@ enum CLI {
         let args = CommandLine.arguments.dropFirst()
         if args.contains("--probe") { probe(); return true }
         if args.contains("--dump-sensors") { dumpSensors(); return true }
+        if args.contains("--probe-storage") { probeStorage(); return true }
         if let i = CommandLine.arguments.firstIndex(of: "--dump-icons"), i + 1 < CommandLine.arguments.count {
             dumpIcons(to: CommandLine.arguments[i + 1]); return true
         }
@@ -86,6 +87,20 @@ enum CLI {
             icon.draw(in: NSRect(x: 0, y: 0, width: 18 * scale, height: 18 * scale))
             NSGraphicsContext.restoreGraphicsState()
             try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(dir)/\(name).png"))
+        }
+    }
+
+    private static func probeStorage() {
+        let start = Date()
+        let result = StorageScanner().scan(progress: { p in
+            if let last = p.categories.last {
+                print(String(format: "%6.1fs  %@ %@", Date().timeIntervalSince(start), last.name, Format.bytes(last.bytes, base: .decimal)))
+            }
+        })
+        guard let r = result, let cap = StorageSampler.capacity() else { return }
+        print("used \(Format.bytes(cap.usedBytes, base: .decimal)), other \(Format.bytes(r.otherBytes(usedBytes: cap.usedBytes), base: .decimal)), partial=\(r.partial)")
+        for c in r.categories.sorted(by: { $0.bytes > $1.bytes }).prefix(3) {
+            print(c.name, c.top.prefix(3).map { "\(($0.path as NSString).lastPathComponent) \(Format.bytes($0.bytes, base: .decimal))" }.joined(separator: ", "))
         }
     }
 }

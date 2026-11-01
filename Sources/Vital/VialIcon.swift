@@ -1,10 +1,12 @@
 import AppKit
 import VitalCore
 
-/// The vial glyph for the menu bar. Drawn as a template image; liquid level and tint follow the load band.
+/// The vial glyph for the menu bar. Calm is a template image (follows light/dark menu bars). Busy and
+/// struggling are drawn in colour, because contentTintColor hides template status item images.
 enum VialIcon {
     static func image(for band: LoadBand) -> NSImage {
         let level: CGFloat = band == .calm ? 3.9 : (band == .busy ? 6.4 : 8.9)
+        let ink: NSColor = band == .calm ? .black : (band == .busy ? .systemOrange : .systemRed)
         let draw: () -> Void = {
             let flask = NSBezierPath()
             flask.move(to: NSPoint(x: 7, y: 16))
@@ -15,7 +17,7 @@ enum VialIcon {
             flask.curve(to: NSPoint(x: 14.7, y: 3.9), controlPoint1: NSPoint(x: 14.4, y: 1.5), controlPoint2: NSPoint(x: 15.6, y: 2.2))
             flask.line(to: NSPoint(x: 11, y: 10.5))
             flask.line(to: NSPoint(x: 11, y: 16))
-            NSColor.black.setStroke()
+            ink.setStroke()
             flask.lineWidth = 1.4
             flask.lineJoinStyle = .round
             flask.lineCapStyle = .round
@@ -30,7 +32,7 @@ enum VialIcon {
             let clip = flask.copy() as! NSBezierPath
             clip.close()
             clip.addClip()
-            NSColor.black.setFill()
+            ink.setFill()
             NSRect(x: 0, y: 0, width: 18, height: level).fill()
             NSGraphicsContext.restoreGraphicsState()
         }
@@ -48,15 +50,7 @@ enum VialIcon {
             NSGraphicsContext.restoreGraphicsState()
             image.addRepresentation(rep)
         }
-        image.isTemplate = true
+        image.isTemplate = band == .calm
         return image
-    }
-
-    static func tint(for band: LoadBand) -> NSColor? {
-        switch band {
-        case .calm: return nil
-        case .busy: return .systemOrange
-        case .struggling: return .systemRed
-        }
     }
 }

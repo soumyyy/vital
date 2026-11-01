@@ -62,16 +62,20 @@ public enum StorageSampler {
         let developer: [String] = [dev, home + "/.cache", home + "/.npm", home + "/.cargo",
                                    home + "/.rustup", home + "/.gradle", home + "/.m2", home + "/.cocoapods"]
         let claimed = Set([caches] + developer + docker)
+        let homeClaimed = Set([lib, home + "/Documents", home + "/Desktop", home + "/Downloads", home + "/Movies",
+                               home + "/Music", home + "/Pictures", home + "/Applications"] + developer + docker)
         return [
             CategoryDefinition(name: "Applications", roots: ["/Applications", home + "/Applications"]),
             CategoryDefinition(name: "Documents", roots: [home + "/Documents"]),
             CategoryDefinition(name: "Desktop and Downloads", roots: [home + "/Desktop", home + "/Downloads"]),
             CategoryDefinition(name: "Media", roots: [home + "/Movies", home + "/Music", home + "/Pictures"]),
-            CategoryDefinition(name: "Developer", roots: developer),
+            CategoryDefinition(name: "Developer tools", roots: developer),
             CategoryDefinition(name: "Docker and VMs", roots: docker),
             CategoryDefinition(name: "Caches", roots: [caches]),
             CategoryDefinition(name: "Library", roots: [lib], excludePaths: claimed),
-            CategoryDefinition(name: "System", roots: ["/System", "/Library", "/usr", "/private", "/opt", "/bin", "/sbin"]),
+            CategoryDefinition(name: "Home", roots: [home], excludePaths: homeClaimed),
+            CategoryDefinition(name: "System", roots: ["/System", "/Library", "/usr", "/private", "/opt", "/bin", "/sbin"],
+                               excludePaths: ["/System/Volumes"]),   // firmlinked data volume: already counted elsewhere
         ]
     }
 }

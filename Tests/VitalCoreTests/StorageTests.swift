@@ -71,3 +71,8 @@ private func makeTree() throws -> String {
     let r = StorageSampler.capacity()!
     #expect(r.totalBytes > r.availableBytes && r.usedFraction > 0 && r.usedFraction < 1)
 }
+
+@Test func systemCategoryDoesNotWalkIntoTheDataVolume() {
+    let system = StorageSampler.defaultDefinitions().first { $0.name == "System" }!
+    #expect(system.excludePaths.contains("/System/Volumes"))
+}

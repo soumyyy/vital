@@ -68,7 +68,7 @@ struct RowsView: View {
             VStack(spacing: 6) {
                 if let s = model.snapshot.storage {
                     header("Storage", "\(Format.bytes(s.usedBytes, base: .decimal)) / \(Format.bytes(s.totalBytes, base: .decimal))")
-                    UsageBar(fraction: s.usedFraction, color: Palette.level(max(0, (s.usedFraction - 0.2) / 0.8 * 0.9)))
+                    UsageBar(fraction: s.usedFraction, color: s.usedFraction < 0.75 ? Palette.green : (s.usedFraction < 0.9 ? Palette.yellow : Palette.red))
                     HStack {
                         Text("\(Format.bytes(s.availableBytes, base: .decimal)) available")
                         Spacer()

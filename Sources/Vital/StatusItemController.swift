@@ -15,11 +15,6 @@ final class StatusItemController {
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.setAccessibilityLabel("Vital")
         appState.onBandChange = { [weak self] band in self?.apply(band: band) }
-        if CommandLine.arguments.contains("--debug-status") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                NSLog("VITALDEBUG visible=\(self.item.isVisible) window=\(String(describing: button.window?.frame)) image=\(String(describing: button.image)) frame=\(button.frame)")
-            }
-        }
     }
 
     func openPanel() {
@@ -27,8 +22,7 @@ final class StatusItemController {
     }
 
     private func apply(band: LoadBand) {
-        item.button?.image = ProcessInfo.processInfo.environment["VITAL_SF"] != nil ? NSImage(systemSymbolName: "testtube.2", accessibilityDescription: nil) : VialIcon.image(for: band)
-        if let tint = VialIcon.tint(for: band) { item.button?.contentTintColor = tint }
+        item.button?.image = VialIcon.image(for: band)
         let label: String
         switch band { case .calm: label = "Vital"; case .busy: label = "Vital, busy"; case .struggling: label = "Vital, Mac is struggling" }
         item.button?.setAccessibilityLabel(label)

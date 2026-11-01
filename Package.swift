@@ -6,7 +6,13 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [.executable(name: "Vital", targets: ["Vital"])],
     targets: [
-        .target(name: "VitalCore", swiftSettings: [.swiftLanguageMode(.v5)]),
+        .target(
+            name: "CVitalSensors",
+            linkerSettings: [.linkedFramework("IOKit"), .linkedFramework("CoreFoundation")]),
+        .target(
+            name: "VitalCore",
+            dependencies: ["CVitalSensors"],
+            swiftSettings: [.swiftLanguageMode(.v5)]),
         .executableTarget(
             name: "Vital",
             dependencies: ["VitalCore"],

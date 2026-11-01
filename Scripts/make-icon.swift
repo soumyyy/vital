@@ -1,18 +1,46 @@
-// Renders Vital's app icon (the vial on a glass-rimmed gradient squircle) into an .iconset folder.
+// Renders Vital's app icon into an .iconset folder: a bold white heartbeat line on a frosted glass tile,
+// on a blue-violet continuous-corner squircle with a light glass rim. Same motif as the menu bar glyph.
 // Usage: swift Scripts/make-icon.swift build/AppIcon.iconset && iconutil -c icns build/AppIcon.iconset -o Resources/AppIcon.icns
 import AppKit
 
-func flask() -> NSBezierPath {
+/// Continuous-corner squircle (superellipse), close to the macOS app icon shape.
+func squircle(_ r: NSRect, n: CGFloat = 5) -> NSBezierPath {
     let p = NSBezierPath()
-    p.move(to: NSPoint(x: 7, y: 16))
-    p.line(to: NSPoint(x: 7, y: 10.5))
-    p.line(to: NSPoint(x: 3.3, y: 3.9))
-    p.curve(to: NSPoint(x: 5.2, y: 1.5), controlPoint1: NSPoint(x: 2.4, y: 2.2), controlPoint2: NSPoint(x: 3.6, y: 1.5))
-    p.line(to: NSPoint(x: 12.8, y: 1.5))
-    p.curve(to: NSPoint(x: 14.7, y: 3.9), controlPoint1: NSPoint(x: 14.4, y: 1.5), controlPoint2: NSPoint(x: 15.6, y: 2.2))
-    p.line(to: NSPoint(x: 11, y: 10.5))
-    p.line(to: NSPoint(x: 11, y: 16))
+    let a = r.width / 2, b = r.height / 2
+    for i in 0...720 {
+        let t = CGFloat(i) * .pi / 360
+        let c = cos(t), s = sin(t)
+        let pt = NSPoint(x: r.midX + a * (c < 0 ? -1 : 1) * pow(abs(c), 2 / n),
+                         y: r.midY + b * (s < 0 ? -1 : 1) * pow(abs(s), 2 / n))
+        i == 0 ? p.move(to: pt) : p.line(to: pt)
+    }
+    p.close()
     return p
+}
+
+func rgb(_ h: UInt32, _ a: CGFloat = 1) -> NSColor {
+    NSColor(srgbRed: CGFloat((h >> 16) & 255) / 255, green: CGFloat((h >> 8) & 255) / 255,
+            blue: CGFloat(h & 255) / 255, alpha: a)
+}
+
+/// Fills the stroke outline of `path` with a vertical white gradient (a rim that catches light at the top).
+func rim(_ path: NSBezierPath, width: CGFloat, in rect: NSRect, top: CGFloat, bottom: CGFloat) {
+    let cg = NSGraphicsContext.current!.cgContext
+    cg.saveGState()
+    cg.addPath(path.cgPath); cg.setLineWidth(width); cg.replacePathWithStrokedPath(); cg.clip()
+    NSGradient(colors: [NSColor.white.withAlphaComponent(top), NSColor.white.withAlphaComponent(bottom)])!
+        .draw(in: rect, angle: -90)
+    cg.restoreGState()
+}
+
+func shadow(_ alpha: CGFloat, blur: CGFloat, dy: CGFloat, _ body: () -> Void) {
+    NSGraphicsContext.saveGraphicsState()
+    let s = NSShadow()
+    s.shadowColor = NSColor.black.withAlphaComponent(alpha); s.shadowBlurRadius = blur
+    s.shadowOffset = NSSize(width: 0, height: dy)
+    s.set()
+    body()
+    NSGraphicsContext.restoreGraphicsState()
 }
 
 func render(pixels: Int) -> NSBitmapImageRep {
@@ -21,60 +49,40 @@ func render(pixels: Int) -> NSBitmapImageRep {
                                bytesPerRow: 0, bitsPerPixel: 0)!
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
-    let s = CGFloat(pixels) / 1024
-    let t = NSAffineTransform(); t.scaleX(by: s, yBy: s); t.concat()
+    let t = NSAffineTransform(); t.scale(by: CGFloat(pixels) / 1024); t.concat()
 
-    // Squircle body (Apple icon grid: 824 of 1024, ~22.4% corner radius)
+    // Body: Apple icon grid, 824 of 1024.
     let body = NSRect(x: 100, y: 100, width: 824, height: 824)
-    let squircle = NSBezierPath(roundedRect: body, xRadius: 184, yRadius: 184)
+    let shape = squircle(body)
+    shadow(0.30, blur: 30, dy: -14) { rgb(0x3A6BFF).setFill(); shape.fill() }
     NSGraphicsContext.saveGraphicsState()
-    let shadow = NSShadow()
-    shadow.shadowColor = NSColor.black.withAlphaComponent(0.35)
-    shadow.shadowBlurRadius = 28; shadow.shadowOffset = NSSize(width: 0, height: -12)
-    shadow.set()
-    NSColor(red: 0.30, green: 0.40, blue: 1.0, alpha: 1).setFill()
-    squircle.fill()
+    shape.addClip()
+    NSGradient(colors: [rgb(0x5BD6FF), rgb(0x3A6BFF), rgb(0x6236FF)])!.draw(in: body, angle: -70)
+    NSGradient(colors: [NSColor.white.withAlphaComponent(0.30), NSColor.white.withAlphaComponent(0)])!
+        .draw(fromCenter: NSPoint(x: 300, y: 900), radius: 0, toCenter: NSPoint(x: 300, y: 900), radius: 640, options: [])
     NSGraphicsContext.restoreGraphicsState()
+    rim(squircle(body.insetBy(dx: 3, dy: 3)), width: 6, in: body, top: 0.7, bottom: 0.05)
 
+    // Frosted glass tile.
+    let tileRect = NSRect(x: 212, y: 232, width: 600, height: 560)
+    let tile = NSBezierPath(roundedRect: tileRect, xRadius: 150, yRadius: 150)
+    shadow(0.22, blur: 40, dy: -18) { NSColor.white.withAlphaComponent(0.20).setFill(); tile.fill() }
     NSGraphicsContext.saveGraphicsState()
-    squircle.addClip()
-    NSGradient(colors: [NSColor(red: 0.36, green: 0.66, blue: 1.0, alpha: 1), NSColor(red: 0.47, green: 0.24, blue: 1.0, alpha: 1)])!
-        .draw(in: body, angle: -60)
-    // soft top-left glow
-    NSGradient(colors: [NSColor.white.withAlphaComponent(0.35), NSColor.white.withAlphaComponent(0)])!
-        .draw(fromCenter: NSPoint(x: 330, y: 820), radius: 0, toCenter: NSPoint(x: 330, y: 820), radius: 520, options: [])
+    tile.addClip()
+    NSGradient(colors: [NSColor.white.withAlphaComponent(0.28), NSColor.white.withAlphaComponent(0.02)])!
+        .draw(in: tileRect, angle: -90)
     NSGraphicsContext.restoreGraphicsState()
+    rim(tile, width: 5, in: tileRect, top: 0.85, bottom: 0.1)
 
-    // glass rim
-    NSColor.white.withAlphaComponent(0.45).setStroke()
-    let rim = NSBezierPath(roundedRect: body.insetBy(dx: 1.5, dy: 1.5), xRadius: 183, yRadius: 183)
-    rim.lineWidth = 3; rim.stroke()
-
-    // vial: glyph coordinates are 0...18, mapped to ~560 px tall, centred
-    let scale: CGFloat = 36
-    let place = NSAffineTransform()
-    place.translateX(by: 512 - 9 * scale, yBy: 512 - 9 * scale + 10)
-    place.scale(by: scale)
-    let glass = flask(); glass.transform(using: place as AffineTransform)
-
-    NSColor.white.withAlphaComponent(0.20).setFill()
-    let closed = glass.copy() as! NSBezierPath; closed.close(); closed.fill()
-
-    NSGraphicsContext.saveGraphicsState()
-    closed.addClip()
-    let liquidTop = (512 - 9 * scale + 10) + 7.2 * scale
-    NSGradient(colors: [NSColor.white.withAlphaComponent(0.98), NSColor.white.withAlphaComponent(0.78)])!
-        .draw(in: NSRect(x: 0, y: 0, width: 1024, height: liquidTop), angle: 90)
-    NSGraphicsContext.restoreGraphicsState()
-
-    NSColor.white.setStroke()
-    glass.lineWidth = 1.5 * scale * 0.95; glass.lineJoinStyle = .round; glass.lineCapStyle = .round
-    glass.stroke()
-    let lip = NSBezierPath()
-    lip.move(to: NSPoint(x: 5.8, y: 16.4)); lip.line(to: NSPoint(x: 12.2, y: 16.4))
-    lip.transform(using: place as AffineTransform)
-    lip.lineWidth = 1.5 * scale * 0.95; lip.lineCapStyle = .round
-    lip.stroke()
+    // Heartbeat line.
+    let y: CGFloat = 512
+    let pulse = NSBezierPath()
+    pulse.move(to: NSPoint(x: 290, y: y))
+    for p in [(420, y), (468, y + 170), (556, y - 190), (606, y), (734, y)] as [(CGFloat, CGFloat)] {
+        pulse.line(to: NSPoint(x: p.0, y: p.1))
+    }
+    pulse.lineWidth = 64; pulse.lineJoinStyle = .round; pulse.lineCapStyle = .round
+    shadow(0.28, blur: 22, dy: -12) { NSColor.white.setStroke(); pulse.stroke() }
 
     NSGraphicsContext.restoreGraphicsState()
     return rep

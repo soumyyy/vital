@@ -24,7 +24,7 @@ final class StatusItemController {
     func closePanel() { panel.close() }
 
     private func apply(band: LoadBand) {
-        item.button?.image = VialIcon.image(for: band)
+        item.button?.image = PulseIcon.image(for: band)
         let label: String
         switch band { case .calm: label = "Vital"; case .busy: label = "Vital, busy"; case .struggling: label = "Vital, Mac is struggling" }
         item.button?.setAccessibilityLabel(label)

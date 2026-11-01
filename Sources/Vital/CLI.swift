@@ -76,7 +76,7 @@ enum CLI {
     private static func dumpIcons(to dir: String) {
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         for (name, band) in [("calm", LoadBand.calm), ("busy", .busy), ("struggling", .struggling)] {
-            let icon = VialIcon.image(for: band)
+            let icon = PulseIcon.image(for: band)
             let scale = 8
             guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 18 * scale, pixelsHigh: 18 * scale,
                                              bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,

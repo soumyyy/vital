@@ -1,4 +1,6 @@
 import AppKit
+import SwiftUI
+import VitalCore
 
 final class GlassPanel: NSPanel {
     override var canBecomeKey: Bool { true }
@@ -7,9 +9,13 @@ final class GlassPanel: NSPanel {
 
 @MainActor
 final class PanelController {
+    private let appState: AppState
     private var panel: GlassPanel?
+    private var model: PanelModel?
     private var clickMonitor: Any?
-    static let size = NSSize(width: 340, height: 560)
+    static let size = NSSize(width: 340, height: 620)
+
+    init(appState: AppState) { self.appState = appState }
 
     var isVisible: Bool { panel?.isVisible ?? false }
 
@@ -18,23 +24,35 @@ final class PanelController {
     }
 
     func open(relativeTo button: NSStatusBarButton) {
-        let panel = makePanel()
+        let model = PanelModel(appState: appState)
+        if let arg = CommandLine.arguments.first(where: { $0.hasPrefix("--tab=") }),
+           let tab = PanelTab(rawValue: String(arg.dropFirst(6))) { model.tab = tab }   // for screenshots
+        self.model = model
+        let panel = makePanel(model: model)
         self.panel = panel
         position(panel, below: button)
         panel.makeKeyAndOrderFront(nil)
+        appState.sampler.setMode(.open)
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            Task { @MainActor in self?.close() }
+        }
+        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: panel, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.close() }
         }
     }
 
     func close() {
+        guard panel != nil else { return }
         if let m = clickMonitor { NSEvent.removeMonitor(m); clickMonitor = nil }
+        appState.sampler.setMode(.closed)
+        model?.close()
+        model = nil
         panel?.orderOut(nil)
-        panel?.contentView = nil   // release the view tree while closed
+        panel?.contentView = nil          // release the whole SwiftUI tree while closed
         panel = nil
     }
 
-    private func makePanel() -> GlassPanel {
+    private func makePanel(model: PanelModel) -> GlassPanel {
         let p = GlassPanel(
             contentRect: NSRect(origin: .zero, size: Self.size),
             styleMask: [.borderless, .nonactivatingPanel],
@@ -45,23 +63,32 @@ final class PanelController {
         p.level = .popUpMenu
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         p.isReleasedWhenClosed = false
-        p.contentView = GlassBackground(frame: NSRect(origin: .zero, size: Self.size))
+
+        let hosting = NSHostingView(rootView: PanelView(model: model))
+        hosting.frame = NSRect(origin: .zero, size: Self.size)
+        hosting.autoresizingMask = [.width, .height]
+        if #available(macOS 26, *) {
+            p.contentView = hosting
+        } else {
+            let blur = GlassBackground(frame: NSRect(origin: .zero, size: Self.size))
+            blur.addSubview(hosting)
+            p.contentView = blur
+        }
         return p
     }
 
     private func position(_ panel: NSPanel, below button: NSStatusBarButton) {
         guard let window = button.window else { return }
         let buttonFrame = window.convertToScreen(button.convert(button.bounds, to: nil))
-        let screen = window.screen ?? NSScreen.main
-        let visible = screen?.visibleFrame ?? .zero
+        let visible = (window.screen ?? NSScreen.main)?.visibleFrame ?? .zero
         var x = buttonFrame.midX - Self.size.width / 2
         x = min(max(x, visible.minX + 8), visible.maxX - Self.size.width - 8)
-        let y = buttonFrame.minY - Self.size.height - 6
+        let y = max(visible.minY + 8, buttonFrame.minY - Self.size.height - 6)
         panel.setFrame(NSRect(x: x, y: y, width: Self.size.width, height: Self.size.height), display: true)
     }
 }
 
-/// Frosted background used below macOS 26 and as the base layer everywhere.
+/// Frosted background used below macOS 26.
 final class GlassBackground: NSVisualEffectView {
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -69,7 +96,7 @@ final class GlassBackground: NSVisualEffectView {
         blendingMode = .behindWindow
         state = .active
         wantsLayer = true
-        layer?.cornerRadius = 22
+        layer?.cornerRadius = 26
         layer?.cornerCurve = .continuous
         layer?.masksToBounds = true
     }

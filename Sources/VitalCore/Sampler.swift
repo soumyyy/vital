@@ -115,7 +115,9 @@ public final class Sampler {
         var unresponsive = Set<Int32>()
         var hasProcessData = false
         if open {
-            let sample = processes.sample()
+            var sample = processes.sample()
+            let me = getpid()
+            sample.rows.removeAll { $0.pid == me }       // Vital never lists itself
             hasProcessData = primedProcesses
             primedProcesses = true
             if hasProcessData {

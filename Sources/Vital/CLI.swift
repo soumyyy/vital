@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import VitalCore
 
@@ -7,6 +8,9 @@ enum CLI {
         let args = CommandLine.arguments.dropFirst()
         if args.contains("--probe") { probe(); return true }
         if args.contains("--dump-sensors") { dumpSensors(); return true }
+        if let i = CommandLine.arguments.firstIndex(of: "--dump-icons"), i + 1 < CommandLine.arguments.count {
+            dumpIcons(to: CommandLine.arguments[i + 1]); return true
+        }
         return false
     }
 
@@ -65,5 +69,23 @@ enum CLI {
         ]
         let clean = (try? JSONSerialization.data(withJSONObject: dict.mapValues { v -> Any in v }, options: [.prettyPrinted, .sortedKeys, .fragmentsAllowed]))
         if let data = clean, let text = String(data: data, encoding: .utf8) { print(text) }
+    }
+
+    /// Renders the three menu bar glyphs to PNG files (large, on white) for inspection.
+    private static func dumpIcons(to dir: String) {
+        try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        for (name, band) in [("calm", LoadBand.calm), ("busy", .busy), ("struggling", .struggling)] {
+            let icon = VialIcon.image(for: band)
+            let scale = 8
+            guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 18 * scale, pixelsHigh: 18 * scale,
+                                             bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                             colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { continue }
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+            NSColor.white.setFill(); NSRect(x: 0, y: 0, width: 18 * scale, height: 18 * scale).fill()
+            icon.draw(in: NSRect(x: 0, y: 0, width: 18 * scale, height: 18 * scale))
+            NSGraphicsContext.restoreGraphicsState()
+            try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(dir)/\(name).png"))
+        }
     }
 }

@@ -1,19 +1,37 @@
 import AppKit
+import VitalCore
 
 @MainActor
 final class StatusItemController {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-    private let panel = PanelController()
+    private let panel: PanelController
 
-    init() {
+    init(appState: AppState) {
+        panel = PanelController(appState: appState)
         guard let button = item.button else { return }
-        let image = NSImage(systemSymbolName: "testtube.2", accessibilityDescription: "Vital")
-        image?.isTemplate = true
-        button.image = image
+        apply(band: .calm)
         button.target = self
         button.action = #selector(clicked(_:))
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.setAccessibilityLabel("Vital")
+        appState.onBandChange = { [weak self] band in self?.apply(band: band) }
+        if CommandLine.arguments.contains("--debug-status") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                NSLog("VITALDEBUG visible=\(self.item.isVisible) window=\(String(describing: button.window?.frame)) image=\(String(describing: button.image)) frame=\(button.frame)")
+            }
+        }
+    }
+
+    func openPanel() {
+        if let button = item.button, !panel.isVisible { panel.open(relativeTo: button) }
+    }
+
+    private func apply(band: LoadBand) {
+        item.button?.image = ProcessInfo.processInfo.environment["VITAL_SF"] != nil ? NSImage(systemSymbolName: "testtube.2", accessibilityDescription: nil) : VialIcon.image(for: band)
+        if let tint = VialIcon.tint(for: band) { item.button?.contentTintColor = tint }
+        let label: String
+        switch band { case .calm: label = "Vital"; case .busy: label = "Vital, busy"; case .struggling: label = "Vital, Mac is struggling" }
+        item.button?.setAccessibilityLabel(label)
     }
 
     @objc private func clicked(_ sender: NSStatusBarButton) {

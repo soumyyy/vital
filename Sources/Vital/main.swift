@@ -1,5 +1,7 @@
 import AppKit
 
+if CLI.runIfRequested() { exit(0) }
+
 MainActor.assumeIsolated {
     let app = NSApplication.shared
     let delegate = AppDelegate()

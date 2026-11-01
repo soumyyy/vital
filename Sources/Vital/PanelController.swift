@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Darwin
 import VitalCore
 
 final class GlassPanel: NSPanel {
@@ -50,6 +51,8 @@ final class PanelController {
         panel?.orderOut(nil)
         panel?.contentView = nil          // release the whole SwiftUI tree while closed
         panel = nil
+        // Hand freed heap pages back to the system so the closed footprint returns to its baseline.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { _ = malloc_zone_pressure_relief(nil, 0) }
     }
 
     private func makePanel(model: PanelModel) -> GlassPanel {

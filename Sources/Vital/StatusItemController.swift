@@ -21,6 +21,8 @@ final class StatusItemController {
         if let button = item.button, !panel.isVisible { panel.open(relativeTo: button) }
     }
 
+    func closePanel() { panel.close() }
+
     private func apply(band: LoadBand) {
         item.button?.image = VialIcon.image(for: band)
         let label: String

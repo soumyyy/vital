@@ -16,4 +16,8 @@ int vs_smc_read(const char *key, char type_out[5], uint32_t *size_out, uint8_t b
 // names is a flat buffer of VS_MAX_SENSORS * VS_NAME_LEN chars; entry i starts at names + i * VS_NAME_LEN.
 // Returns the number of sensors read (0 if none/unavailable).
 int vs_hid_temperatures(char *names, double *values);
+
+// --- App responsiveness (same signal Activity Monitor uses for "Not Responding") ---
+// 1 = unresponsive, 0 = responsive, -1 = unknown (API unavailable or pid is not a GUI app).
+int vs_app_unresponsive(int pid);
 #endif

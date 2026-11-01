@@ -137,3 +137,29 @@ int vs_hid_temperatures(char *names, double *values) {
     CFRelease(services);
     return n;
 }
+
+// ---- App responsiveness (private CoreGraphics API, resolved at runtime; missing symbols mean "unknown") ----
+#include <dlfcn.h>
+#include <ApplicationServices/ApplicationServices.h>
+typedef int (*CGSMainConnectionIDFn)(void);
+typedef bool (*CGSEventIsAppUnresponsiveFn)(int cid, const ProcessSerialNumber *psn);
+typedef OSStatus (*GetProcessForPIDFn)(pid_t pid, ProcessSerialNumber *psn);
+
+int vs_app_unresponsive(int pid) {
+    static CGSMainConnectionIDFn mainConn;
+    static CGSEventIsAppUnresponsiveFn isUnresponsive;
+    static GetProcessForPIDFn getPSN;
+    static int resolved = 0;
+    if (!resolved) {
+        mainConn = (CGSMainConnectionIDFn)dlsym(RTLD_DEFAULT, "CGSMainConnectionID");
+        isUnresponsive = (CGSEventIsAppUnresponsiveFn)dlsym(RTLD_DEFAULT, "CGSEventIsAppUnresponsive");
+        getPSN = (GetProcessForPIDFn)dlsym(RTLD_DEFAULT, "GetProcessForPID");
+        resolved = 1;
+    }
+    if (!mainConn || !isUnresponsive || !getPSN) return -1;
+    int cid = mainConn();
+    if (cid == 0) return -1;
+    ProcessSerialNumber psn;
+    if (getPSN((pid_t)pid, &psn) != 0) return -1;
+    return isUnresponsive(cid, &psn) ? 1 : 0;
+}

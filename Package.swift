@@ -8,7 +8,7 @@ let package = Package(
     targets: [
         .target(
             name: "CVitalSensors",
-            linkerSettings: [.linkedFramework("IOKit"), .linkedFramework("CoreFoundation")]),
+            linkerSettings: [.linkedFramework("IOKit"), .linkedFramework("CoreFoundation"), .linkedFramework("ApplicationServices")]),
         .target(
             name: "VitalCore",
             dependencies: ["CVitalSensors"],

@@ -1,6 +1,6 @@
 # Release and update Vital
 
-Read [current status](STATUS.md) before starting. This runbook describes publishing outside the Mac App Store, including future Homebrew Cask delivery.
+This runbook describes publishing outside the Mac App Store, including future Homebrew Cask delivery.
 
 ## Use the public update feed
 

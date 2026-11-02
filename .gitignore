@@ -1,5 +1,31 @@
+# Build output
 .build/
 build/
-.swiftpm/
+DerivedData/
 *.xcodeproj
+xcuserdata/
+.swiftpm/
+
+# macOS and editors
 .DS_Store
+.vscode/
+.idea/
+
+# Secrets and signing material: never commit
+.env
+.env.*
+*.p12
+*.p8
+*.cer
+*.pem
+*.mobileprovision
+*.provisionprofile
+*.keychain*
+
+# Local working notes and design exploration
+tasks/
+docs/superpowers/
+design/
+docs/STATUS.md
+.claude/
+*.log

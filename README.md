@@ -4,7 +4,7 @@ A lean menu bar monitor for Apple Silicon Macs. It answers one question: what is
 
 Download the signed, notarized app from [GitHub Releases](https://github.com/soumyyy/vital/releases/latest). See [installation and removal](docs/INSTALL.md).
 
-For development, start with [current status and next steps](docs/STATUS.md). Use the [release runbook](docs/RELEASING.md) for distribution.
+For distribution, see the [release runbook](docs/RELEASING.md).
 
 - **One headline**: a single sentence says whether your Mac is fine and, if not, which app is the cause, with a Quit button. When apps stop responding it turns red with Force Quit.
 - **Four vitals, one number each**: CPU, memory, storage and heat. Colour appears only when something needs attention. Tap a vital to list the apps using the most of it (folders, for storage).
@@ -104,7 +104,3 @@ The 26 MB after closing is the floor for SwiftUI in this process: an empty panel
 Sensor approach informed by [Stats](https://github.com/exelban/Stats) and [macmon](https://github.com/vladkens/macmon) (both MIT).
 
 License: MIT.
-
-## Release context
-
-Read [current status and next steps](docs/STATUS.md) when resuming work. The [release runbook](docs/RELEASING.md) covers versioning, signing, notarization, publishing, permission checks, and Homebrew Cask.

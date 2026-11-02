@@ -27,13 +27,14 @@ swift test                       # 68 tests
 | State | Footprint | CPU |
 |---|---|---|
 | Panel never opened | 12 MB (re-measured after the last changes) | about 0% (5 s cadence, no process scan) |
-| Panel open | about 90 MB (mostly window graphics) | about 3% at 1 s cadence |
-| Panel closed again | about 28 MB (frameworks keep some caches) | about 0% |
+| Panel open | about 30 MB | about 3% at 1 s cadence |
+| Panel closed again | about 25-28 MB (SwiftUI and font caches stay) | about 0% |
 
 ## How it works
 
 - Direct Mach, libproc and sysctl calls. It never shells out to `ps` or `top`.
-- Sampling runs off the main thread at utility priority, skips overlapping ticks, and backs off if its own sampling gets expensive.
+- Measuring runs off the main thread at utility priority, skips overlapping ticks, and backs off if it gets expensive.
+- Permissions: Vital asks for none by default. The storage scan never opens Documents, Desktop, Downloads, Photos, Music, Movies, iCloud Drive or other apps' data. Each personal folder has a Scan button; macOS asks only if you tap it. Full Disk Access is optional.
 - macOS does not let an unprivileged app read memory or exact CPU for root-owned processes, so those appear as one approximate **System and other users** row.
 - Temperatures come from the private IOHID sensor client and fans from the SMC (the same data `powermetrics` reads). These private APIs are why Vital is not on the Mac App Store and is not sandboxed. If a sensor is missing it shows "n/a", never an invented number.
 - `Vital --dump-sensors` prints the sensor and fan inventory as JSON. Please attach it when reporting an unsupported Mac.

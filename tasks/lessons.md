@@ -8,3 +8,5 @@
 - `fts` with `FTS_XDEV` still walked `/System/Volumes/Data`; exclude it explicitly.
 - When the display is asleep, verify UI offscreen: `Vital --render-panel out.png --tab=Heat` renders the SwiftUI panel to a PNG without a screen.
 - An unprivileged SMC write returns kIOReturnNotPrivileged (0xe00002c1); fan control needs root. Never fake it in the UI.
+- A SwiftUI `Canvas` allocated about 60 MB of GPU memory while the panel was open (90 MB to 30 MB after switching to Path shapes). Avoid Canvas and drawingGroup in the panel.
+- Reading ~/Documents, Desktop, Downloads, Pictures, Music, Movies, ~/Library/Containers or iCloud triggers macOS permission prompts. Scan them only on explicit user request.

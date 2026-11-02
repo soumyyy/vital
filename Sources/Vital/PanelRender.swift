@@ -21,9 +21,9 @@ enum PanelRender {
         if let mock = value("mock") {
             state.onSnapshot = nil                       // freeze the staged reading
             model.snapshot = staged(mock, from: state.latest)
-            if let focus = Health.headline(model.snapshot).focus, focus != .storage { model.tab = PanelTab(focus) }
+            if let focus = Health.headline(model.snapshot).focus, focus != .storage { model.tab = PanelTab(focus); model.overview = false }
         }
-        if let t = value("tab"), let tab = PanelTab(argument: t) { model.tab = tab }
+        if let t = value("tab"), let tab = PanelTab(argument: t) { model.tab = tab; model.overview = false }
         if args.contains("--expand-first"), let g = model.ranked.first(where: { !$0.isAggregate }) { model.expanded.insert(g.id) }
         if args.contains("--overview") { model.overview = true }
         if args.contains("--demo-history") {                       // five minutes of invented readings, to judge the graphs
@@ -48,6 +48,7 @@ enum PanelRender {
         let dark = value("appearance") != "light"
         let limit = value("max-height").flatMap(Double.init).map { CGFloat($0) } ?? 680   // taller, to see below the fold
         model.maxHeight = limit
+        model.minHeight = min(480, limit)
         var height: CGFloat = limit
         model.onHeight = { height = $0 }
         NSApp.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
@@ -63,7 +64,7 @@ enum PanelRender {
         window.appearance = appearance
         window.contentView = host
         for _ in 0..<4 { host.layoutSubtreeIfNeeded(); spin(0.1) }
-        window.setContentSize(NSSize(width: 340, height: min(limit, max(120, height.rounded(.up)))))
+        window.setContentSize(NSSize(width: 340, height: min(limit, max(model.floorHeight, height.rounded(.up)))))
         host.layoutSubtreeIfNeeded()
         spin(0.2)
         appearance.performAsCurrentDrawingAppearance {

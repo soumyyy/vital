@@ -41,6 +41,8 @@ final class StatusItemController: NSObject {
         if !panel.isVisible { appState.sampler.prime() }
     }
 
+    @objc private func showAbout() { AboutPanel.show() }
+
     @objc private func clicked(_ sender: NSStatusBarButton) {
         if NSApp.currentEvent?.type == .rightMouseUp {
             showMenu()
@@ -51,7 +53,7 @@ final class StatusItemController: NSObject {
 
     private func showMenu() {
         let menu = NSMenu()
-        menu.addItem(withTitle: "About Vital", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        menu.addItem(withTitle: "About Vital", action: #selector(showAbout), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Vital", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.menu = menu

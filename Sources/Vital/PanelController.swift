@@ -14,7 +14,7 @@ final class PanelController {
     private var panel: GlassPanel?
     private var model: PanelModel?
     private var clickMonitor: Any?
-    static let size = NSSize(width: 340, height: 680)       // width, and the tallest the panel gets
+    static let size = NSSize(width: 340, height: 600)       // width, and the tallest the panel gets
 
     init(appState: AppState) { self.appState = appState }
 
@@ -27,11 +27,12 @@ final class PanelController {
     func open(relativeTo button: NSStatusBarButton) {
         let model = PanelModel(appState: appState)
         if let arg = CommandLine.arguments.first(where: { $0.hasPrefix("--tab=") }),
-           let tab = PanelTab(argument: String(arg.dropFirst(6))) { model.tab = tab }   // for screenshots
+           let tab = PanelTab(argument: String(arg.dropFirst(6))) { model.tab = tab; model.overview = false }   // for screenshots
         if CommandLine.arguments.contains("--overview") { model.overview = true }
         self.model = model
         let visible = (button.window?.screen ?? NSScreen.main)?.visibleFrame.height ?? Self.size.height
         model.maxHeight = min(Self.size.height, visible - 16)
+        model.minHeight = min(480, model.maxHeight)
         let panel = makePanel(model: model)
         self.panel = panel
         position(panel, below: button, height: model.maxHeight)
@@ -63,7 +64,7 @@ final class PanelController {
     /// Content height changed (a row expanded, another tile selected): keep the top edge under the menu bar icon.
     private func resize(to height: CGFloat) {
         guard let panel, let model else { return }
-        let h = min(max(height.rounded(.up), 120), model.maxHeight)
+        let h = min(max(height.rounded(.up), model.floorHeight), model.maxHeight)
         var f = panel.frame
         guard abs(f.height - h) >= 1 else { return }
         f.origin.y += f.height - h

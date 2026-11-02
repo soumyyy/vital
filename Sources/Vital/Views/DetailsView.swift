@@ -49,6 +49,35 @@ struct DetailRow: View {
     }
 }
 
+/// One titled group of rows inside a details card. Groups are separated by a hairline.
+struct DetailGroup<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(0.5)
+                .foregroundStyle(.secondary).padding(.bottom, 2)
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// A details card: its groups stacked with a hairline between them.
+struct DetailsCard<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) { content }.card()
+    }
+}
+
+extension View {
+    /// Hairline above a group (everything but the first).
+    func divided() -> some View {
+        VStack(alignment: .leading, spacing: 10) { Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 1); self }
+    }
+}
+
 /// Explanatory text under details rows.
 struct Note: View {
     let text: String
@@ -63,44 +92,51 @@ struct Note: View {
 private struct CPUDetails: View {
     @ObservedObject var model: PanelModel
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        DetailsCard {
             if let c = model.snapshot.cpu {
-                if model.history.count > 1 {
-                    Sparkline(values: model.history, color: Health.cpu(c.total) == .good ? Color.primary.opacity(0.5) : Palette.color(Health.cpu(c.total)))
-                        .frame(height: 30).padding(.vertical, 4)
+                DetailGroup(title: "Load") {
+                    DetailRow(label: "In use", value: Format.percent(c.total))
+                    if model.history.count > 1 {
+                        Sparkline(values: model.history, color: Health.cpu(c.total) == .good ? Color.primary.opacity(0.5) : Palette.color(Health.cpu(c.total)))
+                            .frame(height: 30).padding(.top, 4)
+                    }
                 }
-                if let p = c.performance { DetailRow(label: "Performance cores", value: Format.percent(p)) }
-                if let e = c.efficiency { DetailRow(label: "Efficiency cores", value: Format.percent(e)) }
+                if c.performance != nil || c.efficiency != nil {
+                    DetailGroup(title: "Cores") {
+                        if let p = c.performance { DetailRow(label: "Performance", value: Format.percent(p)) }
+                        if let e = c.efficiency { DetailRow(label: "Efficiency", value: Format.percent(e)) }
+                    }.divided()
+                }
                 Note("Apps show their share of the whole CPU. Hover a process for the Activity Monitor figure.")
-                    .padding(.top, 4)
             } else {
                 DetailRow(label: "CPU", value: "n/a")
             }
         }
-        .card()
     }
 }
 
 private struct MemoryDetails: View {
     let snapshot: Snapshot
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        DetailsCard {
             if let m = snapshot.memory {
                 let level = Health.memory(m.pressure)
                 let thrashing = Health.isThrashing(pageInBytesPerSec: snapshot.pageInBytesPerSec, swapUsedBytes: m.swapUsedBytes)
-                DetailRow(label: "In use", value: "\(Format.bytes(m.usedBytes, base: .binary)) of \(Format.bytes(m.totalBytes, base: .binary))")
-                DetailRow(label: "Pressure", value: pressureWord(m.pressure), color: Palette.text(level))
-                DetailRow(label: "Swap", value: m.swapUsedBytes == 0 ? "None" : Format.bytes(m.swapUsedBytes, base: .binary))
-                DetailRow(label: "Read back from disk", value: Format.rate(snapshot.pageInBytesPerSec), color: thrashing ? Palette.red : .primary)
+                DetailGroup(title: "Memory") {
+                    DetailRow(label: "In use", value: "\(Format.bytes(m.usedBytes, base: .binary)) of \(Format.bytes(m.totalBytes, base: .binary))")
+                    DetailRow(label: "Pressure", value: pressureWord(m.pressure), color: Palette.text(level))
+                }
+                DetailGroup(title: "Swap") {
+                    DetailRow(label: "Used", value: m.swapUsedBytes == 0 ? "None" : Format.bytes(m.swapUsedBytes, base: .binary))
+                    DetailRow(label: "Read back from disk", value: Format.rate(snapshot.pageInBytesPerSec), color: thrashing ? Palette.red : .primary)
+                }.divided()
                 if thrashing {
-                    Note("The Mac is short of memory and is reading it back from disk. Quit a heavy app to speed things up.",
-                         color: Palette.orange).padding(.top, 4)
+                    Note("The Mac is short of memory and is reading it back from disk. Quit a heavy app to speed things up.", color: Palette.orange)
                 }
             } else {
                 DetailRow(label: "Memory", value: "n/a")
             }
         }
-        .card()
     }
 
     private func pressureWord(_ p: MemoryPressure) -> String {
@@ -117,27 +153,34 @@ private struct StorageDetails: View {
         let apps = snap.groups.filter { !$0.isAggregate }
         let busiest = Ranking.sorted(apps, by: .disk).filter { $0.diskBytesPerSec >= 1000 }.prefix(3)
         VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
+            DetailsCard {
                 if let s = store.capacity ?? snap.storage {
-                    DetailRow(label: "In use", value: "\(Format.bytes(s.usedBytes, base: .decimal)) of \(Format.bytes(s.totalBytes, base: .decimal))")
-                    DetailRow(label: "Free", value: Format.bytes(s.availableBytes, base: .decimal))
-                }
-                DetailRow(label: "Reading", value: Format.rate(apps.reduce(0) { $0 + $1.diskReadBytesPerSec }))
-                DetailRow(label: "Writing", value: Format.rate(apps.reduce(0) { $0 + $1.diskWriteBytesPerSec }))
-                ForEach(Array(busiest)) { g in
-                    HStack(spacing: 6) {
-                        Image(nsImage: model.icon(for: g)).resizable().frame(width: 14, height: 14)
-                        Text(g.name).lineLimit(1)
-                        Spacer()
-                        Text("\(Format.rate(g.diskReadBytesPerSec)) read · \(Format.rate(g.diskWriteBytesPerSec)) written")
-                            .foregroundStyle(.secondary).monospacedDigit()
+                    DetailGroup(title: "Capacity") {
+                        DetailRow(label: "In use", value: "\(Format.bytes(s.usedBytes, base: .decimal)) of \(Format.bytes(s.totalBytes, base: .decimal))")
+                        DetailRow(label: "Free", value: Format.bytes(s.availableBytes, base: .decimal))
                     }
-                    .font(Typo.small).padding(.leading, 8)
-                    .help("Written since it started: \(Format.bytes(g.diskWrittenTotal, base: .decimal))")
                 }
-                Note("Disk activity counts apps you can see. System services are not included.").padding(.top, 2)
+                DetailGroup(title: "Disk activity") {
+                    DetailRow(label: "Reading", value: Format.rate(apps.reduce(0) { $0 + $1.diskReadBytesPerSec }))
+                    DetailRow(label: "Writing", value: Format.rate(apps.reduce(0) { $0 + $1.diskWriteBytesPerSec }))
+                }.divided()
+                if !busiest.isEmpty {
+                    DetailGroup(title: "Busiest apps") {
+                        ForEach(Array(busiest)) { g in
+                            HStack(spacing: 6) {
+                                Image(nsImage: model.icon(for: g)).resizable().frame(width: 14, height: 14)
+                                Text(g.name).lineLimit(1)
+                                Spacer()
+                                Text("\(Format.rate(g.diskReadBytesPerSec)) read · \(Format.rate(g.diskWriteBytesPerSec)) written")
+                                    .foregroundStyle(.secondary).monospacedDigit()
+                            }
+                            .font(Typo.small).padding(.vertical, 2)
+                            .help("Written since it started: \(Format.bytes(g.diskWrittenTotal, base: .decimal))")
+                        }
+                    }.divided()
+                }
+                Note("Disk activity counts apps you can see. System services are not included.")
             }
-            .card()
             notes
         }
     }
@@ -168,35 +211,37 @@ private struct HeatDetails: View {
     var body: some View {
         let snap = model.snapshot
         let t = snap.thermal
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
+        DetailsCard {
+            DetailGroup(title: "Temperature") {
                 DetailRow(label: "macOS thermal state", value: VitalTiles.word(t.state), color: Palette.text(Health.heat(t.state)))
-                if t.cpuCelsius == nil && t.gpuCelsius == nil {
-                    DetailRow(label: "Temperatures", value: "n/a")
-                }
-                if let c = t.cpuCelsius { DetailRow(label: "CPU temperature", value: "\(Int(c.rounded())) °C") }
-                if let g = t.gpuCelsius { DetailRow(label: "GPU temperature", value: "\(Int(g.rounded())) °C") }
-                if let b = snap.battery { battery(b) }
-                if let n = snap.network {
-                    DetailRow(label: "Network", value: "↓ \(Format.rate(n.downBytesPerSec))  ↑ \(Format.rate(n.upBytesPerSec))")
-                }
-                let awake = awakeNames
-                if !awake.isEmpty {
-                    DetailRow(label: "Keeping Mac awake", value: awake.joined(separator: ", "), color: Palette.orange)
-                }
+                if t.cpuCelsius == nil && t.gpuCelsius == nil { DetailRow(label: "Sensors", value: "n/a") }
+                if let c = t.cpuCelsius { DetailRow(label: "CPU", value: "\(Int(c.rounded())) °C") }
+                if let g = t.gpuCelsius { DetailRow(label: "GPU", value: "\(Int(g.rounded())) °C") }
             }
-            .card()
+            if let b = snap.battery { DetailGroup(title: "Battery") { battery(b) }.divided() }
+            if let n = snap.network {
+                DetailGroup(title: "Network") {
+                    DetailRow(label: "Download", value: Format.rate(n.downBytesPerSec))
+                    DetailRow(label: "Upload", value: Format.rate(n.upBytesPerSec))
+                }.divided()
+            }
+            let awake = awakeNames
+            if !awake.isEmpty {
+                DetailGroup(title: "Keeping your Mac awake") {
+                    ForEach(awake, id: \.self) { Text($0).font(Typo.small).foregroundStyle(Palette.orange).padding(.vertical, 2) }
+                }.divided()
+            }
         }
     }
 
     @ViewBuilder private func battery(_ b: BatteryReading) -> some View {
         let state = b.isCharging ? "charging" : (b.onPower ? "plugged in" : "on battery")
-        DetailRow(label: "Battery", value: "\(b.percent)%, \(state)",
+        DetailRow(label: "Level", value: "\(b.percent)%, \(state)",
                   color: !b.onPower && b.percent <= 20 ? Palette.red : .primary)
         if let w = b.watts, !b.onPower || b.isCharging { DetailRow(label: b.isCharging ? "Charging at" : "Drawing", value: String(format: "%.1f W", w)) }
         if let m = b.minutesRemaining { DetailRow(label: b.isCharging ? "Until full" : "Time left", value: Format.duration(minutes: m)) }
         if let h = b.healthFraction {
-            DetailRow(label: "Battery health", value: Format.percent(h) + (b.cycleCount.map { ", \($0) cycles" } ?? ""))
+            DetailRow(label: "Health", value: Format.percent(h) + (b.cycleCount.map { ", \($0) cycles" } ?? ""))
         }
     }
 

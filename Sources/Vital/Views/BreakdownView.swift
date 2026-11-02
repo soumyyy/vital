@@ -30,7 +30,6 @@ struct BreakdownView: View {
         } else if !model.snapshot.hasProcessData {
             // Same height as the list it stands in for, so the panel does not jump when apps arrive.
             VStack(alignment: .leading, spacing: 6) {
-                SectionLabel(title)
                 HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Loading apps…").font(Typo.small).foregroundStyle(.secondary) }
                     .frame(maxWidth: .infinity).frame(height: CGFloat(Self.shortCount) * 32).card()
             }
@@ -41,7 +40,6 @@ struct BreakdownView: View {
             let groups = Array(apps.prefix(model.showAll ? Self.longCount : Self.shortCount))
             let system = model.tab == .heat ? nil : all.first { $0.isAggregate }
             VStack(alignment: .leading, spacing: 6) {
-                SectionLabel(title)
                 VStack(spacing: 0) {
                     if groups.isEmpty {
                         Text("No app is drawing noticeable power.").font(Typo.small).foregroundStyle(.secondary)
@@ -59,15 +57,6 @@ struct BreakdownView: View {
                 }
                 .card()
             }
-        }
-    }
-
-    private var title: String {
-        switch model.tab {
-        case .cpu: return "Using the most CPU"
-        case .memory: return "Using the most memory"
-        case .heat: return "Using the most power"
-        case .storage: return "Using the most space"
         }
     }
 }
@@ -205,7 +194,7 @@ struct StorageBreakdownView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionLabel(title: "Using the most space") { ScanProgress(store: store) }
+            ScanProgress(store: store).padding(.horizontal, 4)
             if let b = store.breakdown {
                 let used = (store.capacity ?? model.snapshot.storage)?.usedBytes ?? 0
                 VStack(spacing: 0) {

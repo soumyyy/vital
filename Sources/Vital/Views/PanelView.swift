@@ -7,12 +7,17 @@ struct PanelView: View {
     @State private var contentHeight: CGFloat = 0
     @State private var chrome: CGFloat = 0          // everything except the scrolling list
 
-    /// The list scrolls only when the panel would grow past its maximum height.
-    private var scrollHeight: CGFloat { min(contentHeight, max(120, model.maxHeight - chrome)) }
+    /// The panel stays between a minimum and a maximum height, so switching tabs never makes it jump by much.
+    /// Content shorter than the minimum leaves quiet space; taller content scrolls.
+    private var scrollHeight: CGFloat {
+        let most = max(120, model.maxHeight - chrome)
+        let least = min(most, max(0, model.floorHeight - chrome))
+        return min(max(contentHeight, least), most)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            VitalTiles(model: model)
+            if !model.overview { VitalTiles(model: model) }      // the Overview cards already show these numbers
             if !model.unresponsiveGroups.isEmpty { NotRespondingStrip(model: model) }
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 12) {
@@ -79,7 +84,7 @@ struct StatusLine: View {
             }
             if let g = culprit {
                 Button("Quit \(g.name)…") { model.request(.quit, [g]) }
-                    .buttonStyle(PillButton()).lineLimit(1).padding(.leading, 21)
+                    .buttonStyle(PillButton()).lineLimit(1)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -169,7 +174,7 @@ struct FloatingPill: View {
             Menu {
                 Toggle("Launch at login", isOn: Binding(get: { launchAtLogin }, set: { setLaunchAtLogin($0) }))
                 Divider()
-                Button("About Vital") { NSApp.orderFrontStandardAboutPanel(nil) }
+                Button("About Vital") { AboutPanel.show() }
                 Button("Quit Vital") { NSApp.terminate(nil) }
             } label: {
                 Image(systemName: "ellipsis").font(.system(size: 12, weight: .medium)).frame(width: 20, height: 20)

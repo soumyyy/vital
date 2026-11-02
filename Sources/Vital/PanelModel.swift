@@ -54,7 +54,7 @@ final class PanelModel: ObservableObject {
     @Published var expanded: Set<String> = []
     @Published var showDetails = false
     @Published var showAll = false
-    @Published var overview = false
+    @Published var overview = true          // the page the panel opens on
     @Published var histories: Histories
     @Published var pending: PendingAction?
     @Published var toast: String?
@@ -72,8 +72,6 @@ final class PanelModel: ObservableObject {
         self.snapshot = appState.latest
         self.history = appState.cpuHistory
         self.histories = appState.histories
-        // Open on the vital the headline is about. Not Storage: that would start a folder scan on every open.
-        if let focus = Health.headline(appState.latest).focus, focus != .storage { tab = PanelTab(focus) }
         appState.onSnapshot = { [weak self] snap in
             guard let self else { return }
             self.snapshot = snap
@@ -102,7 +100,10 @@ final class PanelModel: ObservableObject {
 
     /// Height the panel content wants; the controller resizes the window to it, keeping the top edge.
     var onHeight: ((CGFloat) -> Void)?
-    var maxHeight: CGFloat = 680
+    var maxHeight: CGFloat = 600
+    var minHeight: CGFloat = 480
+    /// The Overview fits its content; the app lists keep a steady height between tabs.
+    var floorHeight: CGFloat { overview ? 120 : minHeight }
 
     var unresponsiveGroups: [AppGroup] { headline.hungIDs.compactMap(group(id:)) }
 

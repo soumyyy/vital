@@ -1,28 +1,42 @@
 import SwiftUI
 import VitalCore
 
+/// Line chart drawn with plain shapes. A SwiftUI `Canvas` here cost about 60 MB of GPU memory while the
+/// panel was open (measured), so this deliberately avoids Canvas and drawingGroup.
 struct Sparkline: View {
     let values: [Double]
     var color: Color = Palette.blue
 
     var body: some View {
-        Canvas { ctx, size in
-            guard values.count > 1 else { return }
-            let step = size.width / CGFloat(max(values.count - 1, 1))
-            var line = Path()
-            for (i, v) in values.enumerated() {
-                let p = CGPoint(x: CGFloat(i) * step, y: size.height - CGFloat(min(max(v, 0), 1)) * (size.height - 2) - 1)
-                i == 0 ? line.move(to: p) : line.addLine(to: p)
+        GeometryReader { geo in
+            let line = linePath(in: geo.size)
+            ZStack {
+                fillPath(line, in: geo.size)
+                    .fill(LinearGradient(colors: [color.opacity(0.35), color.opacity(0.02)], startPoint: .top, endPoint: .bottom))
+                line.stroke(color, style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
             }
-            var fill = line
-            fill.addLine(to: CGPoint(x: size.width, y: size.height))
-            fill.addLine(to: CGPoint(x: 0, y: size.height))
-            fill.closeSubpath()
-            ctx.fill(fill, with: .linearGradient(Gradient(colors: [color.opacity(0.35), color.opacity(0.02)]),
-                                                 startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
-            ctx.stroke(line, with: .color(color), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
         }
         .accessibilityHidden(true)
+    }
+
+    private func linePath(in size: CGSize) -> Path {
+        var p = Path()
+        guard values.count > 1 else { return p }
+        let step = size.width / CGFloat(values.count - 1)
+        for (i, v) in values.enumerated() {
+            let pt = CGPoint(x: CGFloat(i) * step, y: size.height - CGFloat(min(max(v, 0), 1)) * (size.height - 2) - 1)
+            i == 0 ? p.move(to: pt) : p.addLine(to: pt)
+        }
+        return p
+    }
+
+    private func fillPath(_ line: Path, in size: CGSize) -> Path {
+        var p = line
+        guard values.count > 1 else { return p }
+        p.addLine(to: CGPoint(x: size.width, y: size.height))
+        p.addLine(to: CGPoint(x: 0, y: size.height))
+        p.closeSubpath()
+        return p
     }
 }
 

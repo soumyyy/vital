@@ -76,11 +76,28 @@ final class PanelModel: ObservableObject {
     func icon(for g: AppGroup) -> NSImage {
         let key = (g.bundlePath ?? "exec:" + g.name) as NSString
         if let i = icons.object(forKey: key) { return i }
-        let img = g.bundlePath.map { NSWorkspace.shared.icon(forFile: $0) }
-            ?? NSWorkspace.shared.icon(for: .unixExecutable)
-        img.size = NSSize(width: 22, height: 22)
+        let source = g.bundlePath.map { NSWorkspace.shared.icon(forFile: $0) } ?? NSWorkspace.shared.icon(for: .unixExecutable)
+        let img = Self.thumbnail(of: source)
         icons.setObject(img, forKey: key)
         return img
+    }
+
+    /// An app icon from NSWorkspace carries every size from 16 to 1024 px (megabytes each). Keep only a
+    /// 22 pt bitmap (44 px) so the full icon can be freed.
+    static func thumbnail(of source: NSImage) -> NSImage {
+        let pt: CGFloat = 22, px = 44
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: px, bitsPerSample: 8,
+                                         samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return source }
+        rep.size = NSSize(width: pt, height: pt)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        NSGraphicsContext.current?.imageInterpolation = .high
+        source.draw(in: NSRect(x: 0, y: 0, width: pt, height: pt), from: .zero, operation: .sourceOver, fraction: 1)
+        NSGraphicsContext.restoreGraphicsState()
+        let out = NSImage(size: NSSize(width: pt, height: pt))
+        out.addRepresentation(rep)
+        return out
     }
 
     // MARK: actions

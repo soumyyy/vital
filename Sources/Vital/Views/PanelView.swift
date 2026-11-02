@@ -12,15 +12,16 @@ struct PanelView: View {
             TabsView(model: model)
             ScrollView(.vertical, showsIndicators: false) {
                 BreakdownView(model: model)
+                Color.clear.frame(height: 44)      // room to scroll the last row clear of the floating pill
             }
             .frame(maxHeight: .infinity)
-            if let p = model.pending { ConfirmBar(model: model, pending: p) }
-            else if let t = model.toast { ToastBar(text: t) }
-            FooterView(model: model, storage: model.storage)
+            if let p = model.pending { ConfirmBar(model: model, pending: p).padding(.bottom, 40) }
+            else if let t = model.toast { ToastBar(text: t).padding(.bottom, 40) }
         }
         .padding(14)
         .frame(width: 340, height: 620)
         .panelBackground()
+        .overlay(alignment: .bottom) { FloatingPill(model: model, storage: model.storage).padding(.bottom, 12) }
         .animation(.easeOut(duration: 0.15), value: model.pending?.id)
         .animation(.easeOut(duration: 0.15), value: model.tab)
     }
@@ -88,41 +89,59 @@ struct ToastBar: View {
     }
 }
 
-struct FooterView: View {
+/// Floating capsule at the bottom of the panel: refresh and the three-dot menu.
+struct FloatingPill: View {
     @ObservedObject var model: PanelModel
     @ObservedObject var storage: StorageStore
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
-        HStack(spacing: 10) {
-            Text("Vital").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
-            Spacer()
+        HStack(spacing: 14) {
             Button { model.refresh() } label: {
                 ZStack {
                     if model.isRefreshing { ProgressView().controlSize(.small).scaleEffect(0.7) }
-                    else { Image(systemName: "arrow.clockwise") }
+                    else { Image(systemName: "arrow.clockwise").font(.system(size: 12, weight: .medium)) }
                 }
-                .frame(width: 18, height: 18).foregroundStyle(.secondary).contentShape(Rectangle())
+                .frame(width: 20, height: 20).contentShape(Rectangle())
             }
             .buttonStyle(.plain).focusEffectDisabled()
             .help(model.tab == .storage ? "Refresh and rescan storage" : "Refresh now")
             .accessibilityLabel(model.tab == .storage ? "Refresh and rescan storage" : "Refresh now")
+
             Menu {
                 Toggle("Launch at login", isOn: Binding(get: { launchAtLogin }, set: { setLaunchAtLogin($0) }))
                 Divider()
                 Button("About Vital") { NSApp.orderFrontStandardAboutPanel(nil) }
                 Button("Quit Vital") { NSApp.terminate(nil) }
             } label: {
-                Image(systemName: "ellipsis").foregroundStyle(.secondary)
+                Image(systemName: "ellipsis").font(.system(size: 12, weight: .medium)).frame(width: 20, height: 20)
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel("Vital menu")
         }
+        .foregroundStyle(.primary.opacity(0.8))
+        .padding(.horizontal, 16).padding(.vertical, 7)
+        .modifier(PillBackground(reduceTransparency: reduceTransparency))
     }
     private func setLaunchAtLogin(_ on: Bool) {
         do {
             if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
         } catch { NSLog("Vital: launch at login failed: \(error.localizedDescription)") }
         launchAtLogin = SMAppService.mainApp.status == .enabled
+    }
+}
+
+struct PillBackground: ViewModifier {
+    let reduceTransparency: Bool
+    func body(content: Content) -> some View {
+        if reduceTransparency {
+            content.background(Capsule().fill(Color(nsColor: .controlBackgroundColor)))
+                .overlay(Capsule().strokeBorder(.primary.opacity(0.15)))
+        } else if #available(macOS 26, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content.background(.thinMaterial, in: Capsule()).overlay(Capsule().strokeBorder(.white.opacity(0.2)))
+        }
     }
 }

@@ -19,7 +19,7 @@ macOS 14+, Apple Silicon (M1 and later). No network access, no telemetry.
 ```sh
 Scripts/build-app.sh release     # build/Vital.app (ad-hoc signed)
 open build/Vital.app
-swift test                       # 86 tests
+swift test                       # 95 tests
 ```
 
 `Scripts/release.sh` makes a DMG. With `SIGN_IDENTITY="Developer ID Application: ..."` and `NOTARY_PROFILE=<notarytool keychain profile>` it signs and notarizes.
@@ -28,9 +28,11 @@ swift test                       # 86 tests
 
 | State | Footprint | CPU |
 |---|---|---|
-| Panel never opened | 12 MB (re-measured after the last changes) | about 0% (5 s cadence, no process scan) |
-| Panel open | about 33 MB | about 3% at 1 s cadence |
-| Panel closed again | about 25-28 MB (SwiftUI and font caches stay) | about 0% |
+| Panel never opened | 12 MB | about 0.02% (wakes every 15 s when calm, every 5 s when busy) |
+| Panel open | about 33 MB | about 1.8% (updates every 2 s) |
+| Panel closed again | about 28 MB | about 0% |
+
+The 28 MB after closing is the floor for SwiftUI in this process: an empty panel alone leaves 17 MB, and the panel content the rest. Going lower would take a separate short-lived UI process.
 
 ## How it works
 

@@ -37,3 +37,5 @@ Not verified visually in the live menu bar this round: the display was off, so t
 The Opus delegate ran out of usage mid-task after the icon and part of the storage work; the rest was finished directly.
 
 Round 3: added network speed, battery card, idle wake-ups (Heat tab) and keeping-awake flags. 83 tests. Open panel about 33 MB, about 29 MB after closing. Disk tab not built (owner did not pick it).
+
+Round 4 (lean): closed cadence 15 s when calm (5 s when busy), open cadence 2 s, hang check every 6 s, -Osize and strip (binary 2.0 MB to 0.85 MB). Measured: closed 12 MB and about 0.02% CPU; open 33 MB and about 1.8% CPU; after closing 28 MB. Bisect: empty panel leaves 17 MB, rows 3 MB, list 5 MB, tabs and pill 1 MB each, so about 17 MB is the SwiftUI floor.

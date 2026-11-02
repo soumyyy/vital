@@ -61,6 +61,35 @@ final class FanClient: ObservableObject {
         if let message = Self.completeUpdate() { error = message }
     }
 
+    // MARK: keeping the helper current
+
+    private static let helperBuildKey = "vital.fan.helperBuild"
+
+    /// Restarts the helper when it is not the one bundled with this app. Copying a new Vital over the old one
+    /// (a DMG drag, Homebrew, a restore) leaves the previous helper process running, and it refuses the new app.
+    /// Unregistering and registering again starts the bundled helper; macOS keeps the existing approval.
+    /// `force` does it even when the recorded build matches, for a helper that no longer answers.
+    static func repairHelper(force: Bool = false) async {
+        guard FanService.registrationError() == nil else { return }       // only the signed copy in /Applications
+        let service = SMAppService.daemon(plistName: FanService.plist)
+        guard service.status == .enabled, let build = FanService.bundledHelperBuild() else { return }
+        if !force, UserDefaults.standard.string(forKey: helperBuildKey) == build { return }
+        do { try await service.unregister() } catch { return }
+        try? await Task.sleep(for: .seconds(1))
+        try? service.register()
+        if service.status == .enabled { UserDefaults.standard.set(build, forKey: helperBuildKey) }
+    }
+
+    /// Runs at launch, before any connection is made.
+    func repairHelperIfStale() {
+        Task { [weak self] in
+            await Self.repairHelper()
+            self?.objectWillChange.send()
+        }
+    }
+
+    private var unreachable = false
+
     var needsApproval: Bool { service.status == .requiresApproval }
 
     var setupTitle: String {
@@ -89,7 +118,18 @@ final class FanClient: ObservableObject {
             SMAppService.openSystemSettingsLoginItems()
         case .enabled:
             error = nil
-            refresh()
+            if unreachable {
+                // The helper is registered but not answering: restart it, then connect again.
+                unreachable = false
+                stop()
+                Task { [weak self] in
+                    await Self.repairHelper(force: true)
+                    self?.refresh()
+                }
+            } else {
+                if let build = FanService.bundledHelperBuild() { UserDefaults.standard.set(build, forKey: Self.helperBuildKey) }
+                refresh()
+            }
         case .notFound, .notRegistered:
             if error == nil { error = "Could not enable fan control. Reinstall Vital and try again." }
         @unknown default:
@@ -213,6 +253,7 @@ final class FanClient: ObservableObject {
 
     private func disconnect(id: UUID, message: String) {
         guard connectionID == id else { return }
+        unreachable = true
         stop()
         error = message
     }

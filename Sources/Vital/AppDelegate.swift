@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         installApplicationMenu()
         let state = AppState()
         state.fanController.resumeAfterUpdate()
+        state.fanController.repairHelperIfStale()
         appState = state
         statusController = StatusItemController(appState: state)
         state.start()

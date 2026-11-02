@@ -2,6 +2,9 @@
 
 All notable changes. Versions follow the GitHub releases.
 
+## 0.1.4 (2026-11-03)
+- Fan control keeps working after you replace the app (DMG drag, Homebrew, restore). The helper is now trusted by who signed it, not by one exact build, so a newer Vital can talk to an older helper. On launch Vital also restarts the helper if it is not the one bundled with the app, and **Reconnect** restarts a helper that has stopped answering.
+
 ## 0.1.3 (2026-11-03)
 - New black and white app icon.
 - Translucent red Quit pill on a vital's status line.

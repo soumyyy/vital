@@ -24,7 +24,7 @@ let package = Package(
         .executableTarget(name: "VitalFanHelper", dependencies: ["VitalCore", "VitalFanIPC", "CVitalSensors"], swiftSettings: [.swiftLanguageMode(.v5)]),
         .testTarget(
             name: "VitalCoreTests",
-            dependencies: ["VitalCore"],
+            dependencies: ["VitalCore", "VitalFanIPC"],
             swiftSettings: [.swiftLanguageMode(.v5), .unsafeFlags(["-Osize"], .when(configuration: .release))]),
     ]
 )

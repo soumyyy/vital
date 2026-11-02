@@ -9,18 +9,19 @@ enum FanCLI {
         let service = SMAppService.daemon(plistName: FanService.plist)
         if args.contains("--unregister-fan-helper") || args.contains("--refresh-fan-helper") {
             let refresh = args.contains("--refresh-fan-helper")
-            service.unregister { error in
-                DispatchQueue.main.async {
-                    if let error { print(error.localizedDescription); exit(1) }
+            Task { @MainActor in
+                do {
+                    if service.status == .enabled || service.status == .requiresApproval { try await service.unregister() }
+                    let legacy = SMAppService.daemon(plistName: FanService.legacyPlist)
+                    if legacy.status == .enabled || legacy.status == .requiresApproval { try await legacy.unregister() }
                     guard refresh else { print("Fan helper unregistered."); exit(0) }
-                    // Let Service Management finish removing the old launch job before re-registering.
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                        do { try service.register() }
-                        catch { print(error.localizedDescription) }
-                        print("Helper status: \(service.status.rawValue)")
-                        exit(service.status == .enabled ? 0 : 1)
-                    }
-                }
+                    if let message = FanService.registrationError() { print(message); exit(1) }
+                    try? await Task.sleep(for: .seconds(1))
+                    do { try service.register() }
+                    catch { print(error.localizedDescription) }
+                    print("Helper status: \(service.status.rawValue)")
+                    exit(service.status == .enabled ? 0 : 1)
+                } catch { print(error.localizedDescription); exit(1) }
             }
             RunLoop.main.run()
             return true

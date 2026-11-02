@@ -72,6 +72,10 @@ final class FanClient: ObservableObject {
     }
 
     func enable() {
+        if let message = FanService.registrationError() {
+            error = message
+            return
+        }
         error = nil
         // First-time bundled daemons can report notFound before registration.
         if service.status == .notRegistered || service.status == .notFound {

@@ -7,7 +7,10 @@ CONFIG="${1:-release}"
 # signature and drops the approval when it changes. Use the local Apple Development identity unless told otherwise;
 # fall back to ad hoc (everything but fan control works).
 if [ -z "${SIGN_IDENTITY:-}" ]; then
-  SIGN_IDENTITY="$(security find-identity -v -p codesigning | sed -n 's/.*\([0-9A-F]\{40\}\) "Apple Development.*/\1/p' | head -1)"
+  SIGN_IDENTITY="$(security find-identity -v -p codesigning | sed -n 's/.*\([0-9A-F]\{40\}\) "Developer ID Application.*/\1/p' | head -1)"
+  if [ -z "$SIGN_IDENTITY" ]; then
+    SIGN_IDENTITY="$(security find-identity -v -p codesigning | sed -n 's/.*\([0-9A-F]\{40\}\) "Apple Development.*/\1/p' | head -1)"
+  fi
 fi
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 SIGN_FLAGS=(--force --sign "$SIGN_IDENTITY")
@@ -24,13 +27,13 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Library/
 cp "$BIN" "$APP/Contents/MacOS/Vital"
 [ "$CONFIG" = release ] && strip -x "$APP/Contents/MacOS/Vital"   # drop local symbols: smaller file, same behaviour
 cp "$(dirname "$BIN")/VitalFanHelper" "$APP/Contents/MacOS/VitalFanHelper"
-cp Resources/dev.soumya.vital.fans.plist "$APP/Contents/Library/LaunchDaemons/"
-codesign "${SIGN_FLAGS[@]}" "$APP/Contents/MacOS/VitalFanHelper"
+cp Resources/dev.soumya.vital.fans.plist Resources/dev.soumya.vital.fan-control.plist "$APP/Contents/Library/LaunchDaemons/"
+codesign "${SIGN_FLAGS[@]}" --identifier dev.soumya.vital.fan-helper "$APP/Contents/MacOS/VitalFanHelper"
 # Record the helper build in the daemon configuration to distinguish local rebuilds.
 HELPER_HASH=$(codesign -dv --verbose=4 "$APP/Contents/MacOS/VitalFanHelper" 2>&1 | sed -n 's/^CDHash=//p')
 [ -n "$HELPER_HASH" ]
-/usr/libexec/PlistBuddy -c 'Add :EnvironmentVariables dict' "$APP/Contents/Library/LaunchDaemons/dev.soumya.vital.fans.plist"
-/usr/libexec/PlistBuddy -c "Add :EnvironmentVariables:VITAL_FAN_HELPER_BUILD string $HELPER_HASH" "$APP/Contents/Library/LaunchDaemons/dev.soumya.vital.fans.plist"
+/usr/libexec/PlistBuddy -c 'Add :EnvironmentVariables dict' "$APP/Contents/Library/LaunchDaemons/dev.soumya.vital.fan-control.plist"
+/usr/libexec/PlistBuddy -c "Add :EnvironmentVariables:VITAL_FAN_HELPER_BUILD string $HELPER_HASH" "$APP/Contents/Library/LaunchDaemons/dev.soumya.vital.fan-control.plist"
 
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 SOURCE_REVISION=$(git rev-parse HEAD)

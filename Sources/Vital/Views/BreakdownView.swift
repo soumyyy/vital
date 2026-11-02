@@ -173,12 +173,13 @@ struct GroupRow: View {
 struct PillButton: ButtonStyle {
     var destructive = false
     var prominent = false
+    var translucent = false
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 11, weight: .medium))
             .padding(.horizontal, 12).padding(.vertical, 4)
-            .background(Capsule().fill(destructive ? Palette.red.opacity(0.75) : (prominent ? Palette.blue : Color.primary.opacity(0.14))))
-            .foregroundStyle(destructive || prominent ? Color.white : Color.primary)
+            .background(Capsule().fill(destructive ? Palette.red.opacity(translucent ? 0.14 : 0.75) : (prominent ? Palette.blue : Color.primary.opacity(0.14))))
+            .foregroundStyle(destructive && translucent ? Palette.red : (destructive || prominent ? Color.white : Color.primary))
             .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }

@@ -79,12 +79,12 @@ struct StatusLine: View {
     var body: some View {
         let culprit = status.culpritID.flatMap(model.group(id:))
         let color = Palette.color(status.level)
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .top, spacing: 8) {
                 Image(systemName: status.level == .critical ? "exclamationmark.triangle.fill" : "exclamationmark.circle.fill")
                     .font(.system(size: 13, weight: .semibold)).foregroundStyle(color).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(status.title).font(Typo.mediumBold)
+                    Text(status.title).font(Typo.mediumBold).fixedSize(horizontal: false, vertical: true)
                     if let d = status.detail {
                         Text(d).font(Typo.small).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
@@ -92,8 +92,10 @@ struct StatusLine: View {
                 Spacer(minLength: 0)
             }
             if let g = culprit {
-                Button("Quit \(g.name)…") { model.request(.quit, [g]) }
-                    .buttonStyle(PillButton()).lineLimit(1)
+                Button("Quit \(g.name)") { model.request(.quit, [g]) }
+                    .buttonStyle(PillButton(destructive: true, translucent: true)).lineLimit(1)
+                    .frame(width: 82, alignment: .trailing)
+                    .help("Quit \(g.name)")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

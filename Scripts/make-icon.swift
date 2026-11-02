@@ -54,10 +54,10 @@ func render(pixels: Int) -> NSBitmapImageRep {
     // Body: Apple icon grid, 824 of 1024.
     let body = NSRect(x: 100, y: 100, width: 824, height: 824)
     let shape = squircle(body)
-    shadow(0.30, blur: 30, dy: -14) { rgb(0x3A6BFF).setFill(); shape.fill() }
+    shadow(0.30, blur: 30, dy: -14) { rgb(0x000000).setFill(); shape.fill() }
     NSGraphicsContext.saveGraphicsState()
     shape.addClip()
-    NSGradient(colors: [rgb(0x5BD6FF), rgb(0x3A6BFF), rgb(0x6236FF)])!.draw(in: body, angle: -70)
+    NSGradient(colors: [rgb(0x4A4A4F), rgb(0x1E1E21), rgb(0x050506)])!.draw(in: body, angle: -70)
     NSGradient(colors: [NSColor.white.withAlphaComponent(0.30), NSColor.white.withAlphaComponent(0)])!
         .draw(fromCenter: NSPoint(x: 300, y: 900), radius: 0, toCenter: NSPoint(x: 300, y: 900), radius: 640, options: [])
     NSGraphicsContext.restoreGraphicsState()

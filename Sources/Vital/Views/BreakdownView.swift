@@ -35,6 +35,7 @@ struct BreakdownView: View {
         } else {
             let groups = Array(model.ranked.prefix(12))
             if model.tab == .heat { FanCard(model: model) }
+            if model.tab == .disk { DiskSummaryCard(model: model) }
             VStack(spacing: 0) {
                 ForEach(groups) { g in
                     GroupRow(model: model, group: g)
@@ -103,6 +104,7 @@ struct GroupRow: View {
         case .cpu: return (group.isAggregate ? "≈ " : "") + Format.cpuShare(cores: group.cpuCores, coreCount: coreCount)
         case .memory: return (group.isAggregate ? "≈ " : "") + Format.bytes(group.footprintBytes, base: .binary)
         case .heat: return group.watts.map { String(format: "%.1f W", $0) } ?? "n/a"
+        case .disk: return Format.rate(group.diskBytesPerSec)
         case .storage: return ""
         }
     }
@@ -113,6 +115,7 @@ struct GroupRow: View {
         switch model.tab {
         case .cpu: return Format.ofOneCore(group.cpuCores)
         case .heat: return group.wakeupsPerSec >= 1 ? "\(Int(group.wakeupsPerSec.rounded())) wake-ups/s" : nil
+        case .disk: return "R \(Format.rate(group.diskReadBytesPerSec)) · W \(Format.rate(group.diskWriteBytesPerSec))"
         default: return nil
         }
     }
@@ -135,6 +138,11 @@ struct GroupRow: View {
             }
             if group.processes.count > 8 {
                 Text("+ \(group.processes.count - 8) more").font(.system(size: 10)).foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 30)
+            }
+            if model.tab == .disk {
+                Text("Written since launch: \(Format.bytes(group.diskWrittenTotal, base: .decimal))")
+                    .font(.system(size: 10)).foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 30)
             }
             actionBar.padding(.top, 4)
@@ -163,6 +171,7 @@ struct GroupRow: View {
         case .cpu: return "\(Format.cpuShare(cores: p.cpuCores, coreCount: coreCount)) · \(Int((p.cpuCores * 100).rounded()))%"
         case .memory: return Format.bytes(p.footprintBytes, base: .binary)
         case .heat: return p.watts.map { String(format: "%.1f W", $0) } ?? "n/a"
+        case .disk: return "\(Format.rate(p.diskReadBytesPerSec)) read · \(Format.rate(p.diskWriteBytesPerSec)) write"
         case .storage: return ""
         }
     }
@@ -385,5 +394,52 @@ struct CategoryRow: View {
         case .skipped: return "not scanned, private folder. Choose Scan to include it"
         case .done: return Format.bytes(category.bytes, base: .decimal) + (category.partial ? ", partial" : "")
         }
+    }
+}
+
+/// Disk activity at a glance: what the visible apps read and write, and how much the Mac is reading
+/// back from disk because memory ran short (page-ins).
+struct DiskSummaryCard: View {
+    @ObservedObject var model: PanelModel
+
+    var body: some View {
+        let snap = model.snapshot
+        let apps = snap.groups.filter { !$0.isAggregate }
+        let read = apps.reduce(0) { $0 + $1.diskReadBytesPerSec }
+        let write = apps.reduce(0) { $0 + $1.diskWriteBytesPerSec }
+        let pageIn = snap.pageInBytesPerSec
+        let swapUsed = snap.memory?.swapUsedBytes ?? 0
+        let thrashing = pageIn > 20_000_000 && swapUsed > 500_000_000
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Reading").font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text(Format.rate(read)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                }
+                Spacer()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Writing").font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text(Format.rate(write)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                }
+                Spacer()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("From memory swap").font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text(Format.rate(pageIn)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                        .foregroundStyle(thrashing ? Palette.red : .primary)
+                }
+            }
+            if thrashing {
+                Label("The Mac is short of memory and is reading it back from disk. Quit a heavy app to speed things up.",
+                      systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11)).foregroundStyle(Palette.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("Apps you can see. System services are not included.")
+                    .font(.system(size: 10)).foregroundStyle(.tertiary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+        .accessibilityElement(children: .combine)
     }
 }

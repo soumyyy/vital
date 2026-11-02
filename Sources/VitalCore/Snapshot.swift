@@ -14,6 +14,7 @@ public struct Snapshot: Sendable {
     public var network: NetworkReading?       // only while the panel is open
     public var battery: BatteryReading?       // nil on Macs without a battery, and while the panel is closed
     public var sleepBlockers: [Int32: SleepBlock]
+    public var pageInBytesPerSec: Double = 0   // memory read back from disk, system-wide
 
     public static let empty = Snapshot(date: .distantPast, cpu: nil, memory: nil, storage: nil,
         thermal: ThermalReading(state: .nominal, sensors: [], cpuCelsius: nil, gpuCelsius: nil, hottestCelsius: nil, fans: []),

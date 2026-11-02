@@ -3,9 +3,16 @@ import SwiftUI
 import VitalCore
 
 enum PanelTab: String, CaseIterable, Identifiable {
-    case cpu = "CPU", memory = "Memory", storage = "Storage", heat = "Heat"
+    case cpu = "CPU", memory = "Memory", storage = "Storage", disk = "Disk", heat = "Heat"
     var id: String { rawValue }
-    var metric: RankMetric { self == .memory ? .memory : (self == .heat ? .power : .cpu) }
+    var metric: RankMetric {
+        switch self {
+        case .memory: return .memory
+        case .heat: return .power
+        case .disk: return .disk
+        default: return .cpu
+        }
+    }
 }
 
 struct PendingAction: Identifiable {
@@ -63,7 +70,10 @@ final class PanelModel: ObservableObject {
 
     // MARK: derived
 
-    var ranked: [AppGroup] { Ranking.sorted(snapshot.groups, by: tab.metric) }
+    var ranked: [AppGroup] {
+        let groups = tab == .disk ? snapshot.groups.filter { !$0.isAggregate } : snapshot.groups
+        return Ranking.sorted(groups, by: tab.metric)
+    }
 
     var unresponsiveGroups: [AppGroup] {
         snapshot.groups.filter { g in g.processes.contains { snapshot.unresponsivePIDs.contains($0.pid) } && !g.isProtected }

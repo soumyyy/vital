@@ -27,7 +27,7 @@ public struct ProcessSample: Sendable {
 }
 
 public final class ProcessSampler {
-    private struct Prev { var cpuNs: UInt64; var energyNJ: UInt64; var wakeups: UInt64 }
+    private struct Prev { var cpuNs: UInt64; var energyNJ: UInt64; var wakeups: UInt64; var read: UInt64; var written: UInt64 }
     private struct Info { var name: String; var path: String }
 
     private var previous: [ProcessKey: Prev] = [:]
@@ -75,7 +75,8 @@ public final class ProcessSampler {
             liveKeys.insert(key)
             let cpuNs = nanos(ri.ri_user_time &+ ri.ri_system_time)
             let energy = ri.ri_energy_nj
-            nextPrev[key] = Prev(cpuNs: cpuNs, energyNJ: energy, wakeups: ri.ri_pkg_idle_wkups)
+            nextPrev[key] = Prev(cpuNs: cpuNs, energyNJ: energy, wakeups: ri.ri_pkg_idle_wkups,
+                                  read: ri.ri_diskio_bytesread, written: ri.ri_diskio_byteswritten)
 
             let info: Info
             if let cached = infoCache[key] { info = cached } else {
@@ -88,15 +89,20 @@ public final class ProcessSampler {
             var cpu = 0.0
             var watts: Double?
             var wake = 0.0
+            var readRate = 0.0, writeRate = 0.0
             if let p = previous[key] {
                 cpu = ProcessMath.cpuCores(prevNs: p.cpuNs, curNs: cpuNs, wallNs: wallNs)
                 watts = ProcessMath.watts(prevNJ: p.energyNJ, curNJ: energy, wallNs: wallNs)
                 wake = ProcessMath.perSecond(prev: p.wakeups, cur: ri.ri_pkg_idle_wkups, wallNs: wallNs)
+                readRate = ProcessMath.perSecond(prev: p.read, cur: ri.ri_diskio_bytesread, wallNs: wallNs)
+                writeRate = ProcessMath.perSecond(prev: p.written, cur: ri.ri_diskio_byteswritten, wallNs: wallNs)
             }
             var resp: Int32?
             if let r = responsible?(pid), r > 0, r != pid { resp = r }
             rows.append(ProcessRow(key: key, name: info.name, path: info.path, responsiblePid: resp,
-                                   cpuCores: cpu, footprintBytes: ri.ri_phys_footprint, watts: watts, wakeupsPerSec: wake))
+                                   cpuCores: cpu, footprintBytes: ri.ri_phys_footprint, watts: watts, wakeupsPerSec: wake,
+                                   diskReadBytesPerSec: readRate, diskWriteBytesPerSec: writeRate,
+                                   diskWrittenTotal: ri.ri_diskio_byteswritten))
         }
         previous = nextPrev
         infoCache = infoCache.filter { liveKeys.contains($0.key) }

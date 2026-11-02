@@ -19,6 +19,7 @@ public final class Sampler {
     private var lastBlockers: (blocks: [Int32: SleepBlock], time: Date)?
     private var load = LoadEvaluator()
     private var lastSwap: (bytes: UInt64, time: Date)?
+    private var lastPageIns: (count: UInt64, time: Date)?
     private var lastStorage: (reading: StorageReading, time: Date)?
     private var primedProcesses = false
     private var observers: [NSObjectProtocol] = []
@@ -84,7 +85,7 @@ public final class Sampler {
             self?.queue.async {
                 guard let self, self.running else { return }
                 // Counters are meaningless across sleep: drop all deltas and start clean.
-                self.cpu.reset(); self.processes.reset(); self.smoother.reset(); self.networkSampler.reset(); self.primedProcesses = false; self.lastSwap = nil
+                self.cpu.reset(); self.processes.reset(); self.smoother.reset(); self.networkSampler.reset(); self.primedProcesses = false; self.lastSwap = nil; self.lastPageIns = nil
                 self.scheduleTimer(); self.tick()
             }
         }
@@ -113,6 +114,15 @@ public final class Sampler {
                 if dt > 0 { swapGrowth = max(0, (Double(memory.swapUsedBytes) - Double(last.bytes)) / dt) }
             }
             lastSwap = (memory.swapUsedBytes, started)
+        }
+
+        var pageIn = 0.0
+        if let memory {
+            if let last = lastPageIns {
+                pageIn = MemoryMath.pageInBytesPerSec(prev: last.count, cur: memory.pageIns, pageSize: memory.pageSize,
+                                                      seconds: started.timeIntervalSince(last.time))
+            }
+            lastPageIns = (memory.pageIns, started)
         }
 
         let thermal = ThermalSampler.read(includeSensors: open)
@@ -166,7 +176,8 @@ public final class Sampler {
         let snap = Snapshot(date: started, cpu: cpuReading, memory: memory, storage: storage, thermal: thermal,
                             groups: groups, unresponsivePIDs: unresponsive, swapGrowthBytesPerSec: swapGrowth,
                             band: band, hasProcessData: hasProcessData,
-                            network: network, battery: battery, sleepBlockers: blockers)
+                            network: network, battery: battery, sleepBlockers: blockers,
+                            pageInBytesPerSec: pageIn)
         lock.lock(); _latest = snap; lock.unlock()
         onSnapshot(snap)
 

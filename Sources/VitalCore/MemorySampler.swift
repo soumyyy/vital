@@ -5,8 +5,10 @@ public struct VMStats: Sendable {
     public var pageSize: UInt64
     public var internalPages: UInt64, purgeablePages: UInt64
     public var wiredPages: UInt64, compressorPages: UInt64
+    public var pageIns: UInt64 = 0          // cumulative pages read back from disk (including swap)
     public init(pageSize: UInt64, internalPages: UInt64, purgeablePages: UInt64,
-                wiredPages: UInt64, compressorPages: UInt64) {
+                wiredPages: UInt64, compressorPages: UInt64, pageIns: UInt64 = 0) {
+        self.pageIns = pageIns
         self.pageSize = pageSize; self.internalPages = internalPages; self.purgeablePages = purgeablePages
         self.wiredPages = wiredPages; self.compressorPages = compressorPages
     }
@@ -19,10 +21,19 @@ public struct MemoryReading: Sendable {
     public var swapUsedBytes: UInt64
     public var swapTotalBytes: UInt64
     public var pressure: MemoryPressure
+    public var pageIns: UInt64 = 0
+    public var pageSize: UInt64 = 16384
     public var usedFraction: Double { totalBytes == 0 ? 0 : min(1, Double(usedBytes) / Double(totalBytes)) }
 }
 
 public enum MemoryMath {
+    /// Bytes per second the system read back from disk (page-ins). Rising page-ins with swap in use mean
+    /// the Mac is short of memory and is thrashing. 0 if the counter went backwards.
+    public static func pageInBytesPerSec(prev: UInt64, cur: UInt64, pageSize: UInt64, seconds: Double) -> Double {
+        guard seconds > 0, cur >= prev else { return 0 }
+        return Double(cur - prev) * Double(pageSize) / seconds
+    }
+
     /// Matches Activity Monitor's "Memory Used": app memory + wired + compressed.
     public static func usedBytes(_ s: VMStats) -> UInt64 {
         let app = s.internalPages >= s.purgeablePages ? s.internalPages - s.purgeablePages : 0
@@ -52,7 +63,8 @@ public enum MemorySampler {
             compressedBytes: stats.compressorPages * stats.pageSize,
             swapUsedBytes: haveSwap ? swap.xsu_used : 0,
             swapTotalBytes: haveSwap ? swap.xsu_total : 0,
-            pressure: MemoryMath.pressure(kernelLevel: Sysctl.int("kern.memorystatus_vm_pressure_level")))
+            pressure: MemoryMath.pressure(kernelLevel: Sysctl.int("kern.memorystatus_vm_pressure_level")),
+            pageIns: stats.pageIns, pageSize: stats.pageSize)
     }
 
     static func readVMStats() -> VMStats? {
@@ -68,6 +80,7 @@ public enum MemorySampler {
                        internalPages: UInt64(info.internal_page_count),
                        purgeablePages: UInt64(info.purgeable_count),
                        wiredPages: UInt64(info.wire_count),
-                       compressorPages: UInt64(info.compressor_page_count))
+                       compressorPages: UInt64(info.compressor_page_count),
+                       pageIns: UInt64(info.pageins))
     }
 }

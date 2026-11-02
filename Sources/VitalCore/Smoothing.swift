@@ -16,15 +16,21 @@ public struct TimeWindowMean {
     }
 }
 
-/// Smooths CPU numbers over a 5 s window so the display does not jump around.
+/// Smooths CPU numbers (and the other per-process rates) over a 5 s window so the display does not jump around.
 public struct CPUSmoother {
     public static let window: TimeInterval = 5
+
+    private struct Means {
+        var cpu = TimeWindowMean(window: CPUSmoother.window)
+        var wake = TimeWindowMean(window: CPUSmoother.window)
+        var read = TimeWindowMean(window: CPUSmoother.window)
+        var write = TimeWindowMean(window: CPUSmoother.window)
+    }
 
     private var total = TimeWindowMean(window: window)
     private var efficiency = TimeWindowMean(window: window)
     private var performance = TimeWindowMean(window: window)
-    private var perProcess: [ProcessKey: TimeWindowMean] = [:]
-    private var perProcessWake: [ProcessKey: TimeWindowMean] = [:]
+    private var perProcess: [ProcessKey: Means] = [:]
     private var seen = Set<ProcessKey>()
 
     public init() {}
@@ -37,7 +43,7 @@ public struct CPUSmoother {
         return out
     }
 
-    /// Per-process smoothing. A process's first sighting has no CPU delta yet, so it reports 0 and is not
+    /// Per-process smoothing. A process's first sighting has no delta yet, so it reports 0 and is not
     /// counted in the mean. Entries for processes that have gone are dropped.
     public mutating func smooth(rows: [ProcessRow], at now: Date) -> [ProcessRow] {
         var live = Set<ProcessKey>()
@@ -45,25 +51,23 @@ public struct CPUSmoother {
             var r = row
             live.insert(row.key)
             if seen.contains(row.key) {
-                var mean = perProcess[row.key] ?? TimeWindowMean(window: Self.window)
-                r.cpuCores = mean.add(row.cpuCores, at: now)
-                perProcess[row.key] = mean
-                var wake = perProcessWake[row.key] ?? TimeWindowMean(window: Self.window)
-                r.wakeupsPerSec = wake.add(row.wakeupsPerSec, at: now)
-                perProcessWake[row.key] = wake
+                var m = perProcess[row.key] ?? Means()
+                r.cpuCores = m.cpu.add(row.cpuCores, at: now)
+                r.wakeupsPerSec = m.wake.add(row.wakeupsPerSec, at: now)
+                r.diskReadBytesPerSec = m.read.add(row.diskReadBytesPerSec, at: now)
+                r.diskWriteBytesPerSec = m.write.add(row.diskWriteBytesPerSec, at: now)
+                perProcess[row.key] = m
             } else {
                 seen.insert(row.key)
-                r.cpuCores = 0
-                r.wakeupsPerSec = 0
+                r.cpuCores = 0; r.wakeupsPerSec = 0; r.diskReadBytesPerSec = 0; r.diskWriteBytesPerSec = 0
             }
             return r
         }
         seen = seen.intersection(live)
         perProcess = perProcess.filter { live.contains($0.key) }
-        perProcessWake = perProcessWake.filter { live.contains($0.key) }
         return out
     }
 
-    public mutating func resetProcesses() { perProcess.removeAll(); perProcessWake.removeAll(); seen.removeAll() }
+    public mutating func resetProcesses() { perProcess.removeAll(); seen.removeAll() }
     public mutating func reset() { self = CPUSmoother() }
 }

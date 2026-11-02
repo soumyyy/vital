@@ -119,3 +119,38 @@ private let discharging: [String: Any] = [
     let r = SleepBlockers.parse([420: [["AssertType": "PreventUserIdleSystemSleep", "AssertName": held]]])
     #expect(r[420]?.appName == "WhatsApp")
 }
+
+// MARK: disk
+
+@Test func pageInRateIsBytesPerSecond() {
+    #expect(MemoryMath.pageInBytesPerSec(prev: 1000, cur: 1100, pageSize: 16384, seconds: 1) == 1_638_400)
+    #expect(MemoryMath.pageInBytesPerSec(prev: 1000, cur: 1100, pageSize: 16384, seconds: 2) == 819_200)
+    #expect(MemoryMath.pageInBytesPerSec(prev: 1100, cur: 1000, pageSize: 16384, seconds: 1) == 0)
+    #expect(MemoryMath.pageInBytesPerSec(prev: 1, cur: 2, pageSize: 16384, seconds: 0) == 0)
+}
+
+private func diskRow(_ pid: Int32, read: Double, write: Double, written: UInt64 = 0) -> ProcessRow {
+    ProcessRow(key: ProcessKey(pid: pid, start: UInt64(pid)), name: "app", path: "/bin/app",
+               diskReadBytesPerSec: read, diskWriteBytesPerSec: write, diskWrittenTotal: written)
+}
+
+@Test func diskRatesAreSummedPerAppAndRanked() {
+    let groups = Grouping.group([diskRow(1, read: 100, write: 300, written: 5_000),
+                                 diskRow(2, read: 50, write: 50, written: 1_000),
+                                 ProcessRow(key: ProcessKey(pid: 3, start: 3), name: "other", path: "/bin/other",
+                                            diskReadBytesPerSec: 10, diskWriteBytesPerSec: 20)],
+                                systemCPUCores: nil, memoryUsedBytes: nil)
+    let app = groups.first { $0.name == "app" }!
+    #expect(app.diskReadBytesPerSec == 150 && app.diskWriteBytesPerSec == 350 && app.diskBytesPerSec == 500)
+    #expect(app.diskWrittenTotal == 6_000)
+    #expect(Ranking.sorted(groups, by: .disk).map(\.name) == ["app", "other"])
+}
+
+@Test func diskRatesAreSmoothedLikeCPU() {
+    var s = CPUSmoother()
+    let t0 = Date(timeIntervalSince1970: 3_000)
+    _ = s.smooth(rows: [diskRow(9, read: 0, write: 0)], at: t0)
+    _ = s.smooth(rows: [diskRow(9, read: 100, write: 1_000)], at: t0 + 1)
+    let r = s.smooth(rows: [diskRow(9, read: 300, write: 3_000)], at: t0 + 2)[0]
+    #expect(r.diskReadBytesPerSec == 200 && r.diskWriteBytesPerSec == 2_000)
+}

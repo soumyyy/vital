@@ -1,0 +1,21 @@
+name: Bug report
+description: Something is wrong or a reading looks off
+body:
+  - type: textarea
+    id: what
+    attributes: { label: What happened, description: What did you expect instead? }
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes: { label: Vital version, placeholder: "0.1.3 (see About Vital)" }
+    validations: { required: true }
+  - type: input
+    id: mac
+    attributes: { label: Mac and macOS, placeholder: "MacBook Pro 14-inch M3, macOS 27" }
+    validations: { required: true }
+  - type: textarea
+    id: sensors
+    attributes:
+      label: Sensor dump (for temperature, fan or power problems)
+      description: "Run `/Applications/Vital.app/Contents/MacOS/Vital --dump-sensors` and paste the output."
+      render: json

@@ -22,6 +22,6 @@ jobs:
         run: swift build -c release
       - name: Validate metadata and scripts
         run: |
-          plutil -lint Resources/Info.plist Resources/dev.soumya.vital.fans.plist
+          plutil -lint Resources/Info.plist Resources/*.plist
           bash -n Scripts/build-app.sh Scripts/release.sh
           git diff --check

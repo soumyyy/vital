@@ -4,8 +4,10 @@ import PackageDescription
 let package = Package(
     name: "Vital",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "Vital", targets: ["Vital"]),
-        .executable(name: "VitalFanHelper", targets: ["VitalFanHelper"])],
+    products: [
+        .executable(name: "Vital", targets: ["Vital"]),
+        .executable(name: "VitalFanHelper", targets: ["VitalFanHelper"]),
+    ],
     targets: [
         .target(
             name: "CVitalSensors",

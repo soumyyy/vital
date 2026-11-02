@@ -59,6 +59,7 @@ public enum UpdateFeed {
             let name = ($0["name"] as? String) ?? ""
             return name.hasPrefix("Vital") && name.hasSuffix(".zip")
         }), let name = asset["name"] as? String,
+              !name.contains("/"), !name.contains("\\"),
               let urlString = asset["browser_download_url"] as? String, let url = URL(string: urlString),
               isSecure(url) else { return nil }
         let notes = (root["body"] as? String) ?? ""

@@ -23,7 +23,6 @@ struct OverviewView: View {
                 heatCard(s, series(h.heat, false))
             }
             thinRows(s, down: series(h.down, true), up: series(h.up, true))
-            Text("Graphs show the last five minutes.").font(Typo.small).foregroundStyle(.secondary).padding(.horizontal, 4)
         }
     }
 

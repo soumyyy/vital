@@ -38,23 +38,27 @@ final class FanClient: ObservableObject {
 
     // MARK: updating Vital
 
-    private static let reenableKey = "vital.fan.reenableAfterUpdate"
-
-    /// The helper is registered against this bundle's signature. Remove it before the bundle is replaced and
-    /// remember to register it again from the new version.
-    static func prepareForUpdate() async {
-        let service = SMAppService.daemon(plistName: FanService.plist)
-        guard service.status == .enabled || service.status == .requiresApproval else { return }
-        try? await service.unregister()
-        UserDefaults.standard.set(true, forKey: reenableKey)
+    private static var updateRecovery: HelperUpdateRecovery {
+        HelperUpdateRecovery(service: FanUpdateService())
     }
 
-    /// First launch after an update: put the helper back so fan control keeps working.
-    static func completeUpdate() {
-        guard UserDefaults.standard.bool(forKey: reenableKey) else { return }
-        UserDefaults.standard.removeObject(forKey: reenableKey)
-        let service = SMAppService.daemon(plistName: FanService.plist)
-        try? service.register()
+    static func prepareForUpdate() async throws -> Bool {
+        try await updateRecovery.prepare()
+    }
+
+    @discardableResult
+    static func completeUpdate() -> String? {
+        do {
+            return try updateRecovery.restore()
+                ? "macOS needs approval for fan control again. Select Approve control to open System Settings."
+                : nil
+        } catch {
+            return "Fan control could not be restored after the update. Reconnect to try again."
+        }
+    }
+
+    func resumeAfterUpdate() {
+        if let message = Self.completeUpdate() { error = message }
     }
 
     var needsApproval: Bool { service.status == .requiresApproval }
@@ -229,4 +233,19 @@ final class FanClient: ObservableObject {
         targets = [:]
         oldConnection?.invalidate()
     }
+}
+
+@MainActor
+private final class FanUpdateService: UpdateHelperService {
+    private let service = SMAppService.daemon(plistName: FanService.plist)
+    var state: HelperRegistrationState {
+        switch service.status {
+        case .enabled: return .enabled
+        case .requiresApproval: return .requiresApproval
+        case .notRegistered: return .unregistered
+        default: return .unavailable
+        }
+    }
+    func register() throws { try service.register() }
+    func unregister() async throws { try await service.unregister() }
 }

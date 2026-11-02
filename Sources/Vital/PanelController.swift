@@ -26,9 +26,7 @@ final class PanelController {
 
     func open(relativeTo button: NSStatusBarButton) {
         let model = PanelModel(appState: appState)
-        if let arg = CommandLine.arguments.first(where: { $0.hasPrefix("--tab=") }),
-           let tab = PanelTab(argument: String(arg.dropFirst(6))) { model.tab = tab; model.overview = false }   // for screenshots
-        if CommandLine.arguments.contains("--overview") { model.overview = true }
+        // Every opening starts on Overview. Tab-specific captures belong to --render-panel.
         self.model = model
         let visible = (button.window?.screen ?? NSScreen.main)?.visibleFrame.height ?? Self.size.height
         model.maxHeight = min(Self.size.height, visible - 16)
@@ -40,8 +38,17 @@ final class PanelController {
         panel.contentView?.layoutSubtreeIfNeeded()      // reports the content height, so the panel opens at its size
         panel.makeKeyAndOrderFront(nil)
         appState.sampler.setMode(.open)
-        clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            Task { @MainActor in self?.close() }
+        clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self, weak button] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                // A status-item click can reach this monitor before the button's mouse-up action.
+                // Leave it to toggle(); closing here first would make that action reopen the panel.
+                if let button, let window = button.window {
+                    let iconFrame = window.convertToScreen(button.convert(button.bounds, to: nil))
+                    if iconFrame.contains(NSEvent.mouseLocation) { return }
+                }
+                self.close()
+            }
         }
         NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: panel, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.close() }

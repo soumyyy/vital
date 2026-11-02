@@ -15,5 +15,13 @@
 - Fan control stops working after an ad hoc rebuild: the root helper is pinned to the app's signature, so `Scripts/build-app.sh` must sign with the Apple Development identity (it now picks one automatically) and `Vital --refresh-fan-helper` re-registers after a signature change. Check `Vital --probe-fan-control` after any rebuild that touches signing.
 - The app list was slow to appear because process rates need two readings. Take the first one when the pointer reaches the menu bar icon (`Sampler.prime()`), and the second 0.3 s after opening, not a full interval later. Measured: 2 s before, 166 ms primed, about 600 ms cold.
 - Dark-mode `--render-panel` images still draw primary text dark; judge dark mode from the light renders and colours, not the text contrast.
-- The updater must never run by itself (README promises no network use): checks start only from the About window or the Update Software menu item.
-- `NSApp.terminate` can exit before a `defer` runs; delete the update work folder before relaunching.
+- Update checks are user-initiated: start them only from the About window or Update Software menu item. Downloading a confirmed update can make additional network requests.
+- `NSApp.terminate` can exit before a `defer` runs. Start the relaunch process successfully, clean up completed update work, then terminate. Preserve backups when rollback fails.
+
+- `docs/STATUS.md` is the current resume point; old round/test counts in `tasks/todo.md` are historical. Update the status page when shipping or changing release hosting.
+- Local Apple Development signing is not distribution signing. Public artifacts need Developer ID, hardened runtime and timestamps on both app and helper, notarization, stapling, and Gatekeeper checks. The active Developer ID team is `4W769MPDJ6`; credentials stay in Keychain profile `vital-notary`.
+- An unauthenticated updater cannot read a private GitHub release feed. A public releases-only repo keeps source private, but the feed URL must be changed before building the distributed binary.
+- Manual and Auto SMC writes can be acknowledged before readback settles. Verify the complete mode/target transaction and allow bounded settling for Auto too; a successful write call alone is not proof.
+- `SMAppService.register()` can throw EPERM while reaching requiresApproval. Check the resulting status, keep failed update-recovery markers for retry, and never restore a permission the user had declined.
+- If update rollback fails, preserve the old bundle and report its path. Do not let deferred cleanup or a later leftover sweep delete the only recovery copy.
+- The updater compares short versions, not only build numbers. Publish immutable versioned ZIPs and include the final ZIP checksum; Homebrew uses the separate DMG checksum.

@@ -5,11 +5,14 @@
   <key>CFBundleName</key><string>Vital</string>
   <key>CFBundleDisplayName</key><string>Vital</string>
   <key>CFBundleIdentifier</key><string>dev.soumya.vital</string>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
+  <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Soumya Maheshwari. MIT License.</string>
   <key>CFBundleExecutable</key><string>Vital</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1.0</string>
-  <key>CFBundleVersion</key><string>2</string>
+  <key>CFBundleShortVersionString</key><string>0.1.2</string>
+  <key>CFBundleVersion</key><string>4</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>

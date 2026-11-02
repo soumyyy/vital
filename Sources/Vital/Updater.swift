@@ -1,9 +1,7 @@
 import AppKit
 import CryptoKit
-import ServiceManagement
 import Security
 import VitalCore
-import VitalFanIPC
 
 /// Checks GitHub for a newer release and installs it over the running app. Nothing here runs unless the
 /// person presses a button: Vital makes no network request on its own.
@@ -78,13 +76,20 @@ final class UpdateModel: ObservableObject {
         state = .downloading
         Task { [installTarget, current] in
             let work = installTarget.deletingLastPathComponent().appendingPathComponent(".vital-update-\(UUID().uuidString.prefix(8))")
+            var restoreHelperOnFailure = false
             do {
                 guard FileManager.default.isWritableFile(atPath: installTarget.deletingLastPathComponent().path) else {
                     throw UpdateError("Vital can't replace itself in this folder. Download the new version from the release page instead.")
                 }
                 Self.removeLeftovers(beside: installTarget)
                 try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
-                defer { try? FileManager.default.removeItem(at: work) }
+                defer {
+                    // Preserve the backup if the target disappeared during an interrupted installation.
+                    let backup = work.appendingPathComponent("old.app")
+                    if FileManager.default.fileExists(atPath: installTarget.path) || !FileManager.default.fileExists(atPath: backup.path) {
+                        try? FileManager.default.removeItem(at: work)
+                    }
+                }
 
                 let (tmp, response) = try await URLSession(configuration: .ephemeral).download(from: release.assetURL)
                 if let http = response as? HTTPURLResponse, http.statusCode != 200 {
@@ -101,16 +106,16 @@ final class UpdateModel: ObservableObject {
                 try await Self.unzip(zip, to: unpacked)
                 guard let newApp = try FileManager.default.contentsOfDirectory(at: unpacked, includingPropertiesForKeys: nil)
                     .first(where: { $0.pathExtension == "app" }) else { throw UpdateError("The download did not contain an app.") }
-                try UpdateVerifier.check(newApp, running: Bundle.main.bundleURL, expected: release.version, current: current,
-                                         hasChecksum: release.sha256 != nil)
-                await FanClient.prepareForUpdate()          // the helper is tied to the old bundle's signature
-                try Self.swap(installTarget, with: newApp, in: work)
-                try? FileManager.default.removeItem(at: work)       // terminate() can exit before a defer runs
-                Self.relaunch(installTarget)
-            } catch let error as UpdateError {
-                state = .failed(error.message)
+                try UpdateVerifier.check(newApp, running: Bundle.main.bundleURL, expected: release.version, current: current)
+                restoreHelperOnFailure = try await FanClient.prepareForUpdate()          // the helper is tied to the old bundle's signature
+                try UpdateBundleSwap.replace(installTarget, with: newApp, in: work)
+                try Self.relaunch(installTarget)
+                try? FileManager.default.removeItem(at: work)
+                NSApp.terminate(nil)
             } catch {
-                state = .failed("The update failed: \(error.localizedDescription)")
+                let message = (error as? UpdateError)?.message ?? "The update failed: \(error.localizedDescription)"
+                let recovery = restoreHelperOnFailure ? FanClient.completeUpdate() : nil
+                state = .failed([message, recovery].compactMap { $0 }.joined(separator: " "))
             }
         }
     }
@@ -119,28 +124,20 @@ final class UpdateModel: ObservableObject {
     private static func removeLeftovers(beside target: URL) {
         let dir = target.deletingLastPathComponent()
         for url in (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil, options: [])) ?? []
-        where url.lastPathComponent.hasPrefix(".vital-update-") { try? FileManager.default.removeItem(at: url) }
-    }
-
-    private static func swap(_ target: URL, with new: URL, in work: URL) throws {
-        let fm = FileManager.default
-        let old = work.appendingPathComponent("old.app")
-        try fm.moveItem(at: target, to: old)
-        do { try fm.moveItem(at: new, to: target) }
-        catch {
-            try? fm.moveItem(at: old, to: target)             // put the working app back
-            throw UpdateError("Could not put the new version in place. The old one was kept.")
+        where url.lastPathComponent.hasPrefix(".vital-update-") {
+            guard !FileManager.default.fileExists(atPath: url.appendingPathComponent("old.app").path) else { continue }
+            try? FileManager.default.removeItem(at: url)
         }
     }
 
     /// A short shell waits for this process to exit, then opens the new app.
-    private static func relaunch(_ app: URL) {
+    private static func relaunch(_ app: URL) throws {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/sh")
         p.arguments = ["-c", "while kill -0 \"$VITAL_PID\" 2>/dev/null; do sleep 0.2; done; /usr/bin/open -n \"$VITAL_APP\""]
         p.environment = ["VITAL_PID": String(getpid()), "VITAL_APP": app.path]
-        try? p.run()
-        NSApp.terminate(nil)
+        do { try p.run() }
+        catch { throw UpdateError("The update is installed. Quit and reopen Vital to finish restarting.") }
     }
 
     private static func sha256(of file: URL) throws -> String {
@@ -168,7 +165,7 @@ struct UpdateError: Error { let message: String; init(_ m: String) { message = m
 
 /// Refuses anything that is not a correctly signed Vital from the same developer as the running copy.
 enum UpdateVerifier {
-    static func check(_ new: URL, running: URL, expected: AppVersion, current: AppVersion, hasChecksum: Bool) throws {
+    static func check(_ new: URL, running: URL, expected: AppVersion, current: AppVersion) throws {
         var code: SecStaticCode?
         guard SecStaticCodeCreateWithPath(new as CFURL, [], &code) == errSecSuccess, let code else {
             throw UpdateError("The downloaded app could not be read.")
@@ -187,9 +184,14 @@ enum UpdateVerifier {
         let runningTeam = runningCode.flatMap(team(of:))
         if let runningTeam {
             guard newTeam == runningTeam else { throw UpdateError("The download is signed by a different developer, so it was not installed.") }
-        } else if !hasChecksum {
-            // An ad hoc build has no developer to compare, so the published checksum is the only proof of origin.
-            throw UpdateError("This copy of Vital is not signed by a developer, and the release has no checksum to check against.")
+            var requirement: SecRequirement?
+            let rule = "anchor apple generic and identifier \"dev.soumya.vital\" and certificate leaf[subject.OU] = \"\(runningTeam)\" and certificate leaf[field.1.2.840.113635.100.6.1.13] exists"
+            guard SecRequirementCreateWithString(rule as CFString, [], &requirement) == errSecSuccess,
+                  SecStaticCodeCheckValidity(code, [], requirement) == errSecSuccess else {
+                throw UpdateError("The update must be signed with this developer's Apple-issued Developer ID certificate.")
+            }
+        } else {
+            throw UpdateError("This copy has no developer signing identity. Install the official signed release before using automatic updates.")
         }
     }
 

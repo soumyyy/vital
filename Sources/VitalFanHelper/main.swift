@@ -7,7 +7,7 @@ import VitalFanIPC
 
 final class Helper: NSObject, NSXPCListenerDelegate {
     let queue = DispatchQueue(label: "dev.soumya.vital.fans.hardware")
-    let session = FanSession()
+    let session = FanSession(recovery: FanRecoveryFile())
     private var owner: NSXPCConnection?
     private var timer: DispatchSourceTimer?
     let requirement: String

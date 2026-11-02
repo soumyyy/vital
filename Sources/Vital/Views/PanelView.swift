@@ -5,21 +5,27 @@ import VitalCore
 struct PanelView: View {
     @ObservedObject var model: PanelModel
     @State private var contentHeight: CGFloat = 0
-    @State private var chrome: CGFloat = 0          // everything except the scrolling list
+    @State private var headerHeight: CGFloat = 0
+    @State private var footerHeight: CGFloat = 0
 
-    /// The panel stays between a minimum and a maximum height, so switching tabs never makes it jump by much.
-    /// Content shorter than the minimum leaves quiet space; taller content scrolls.
-    private var scrollHeight: CGFloat {
-        let most = max(120, model.maxHeight - chrome)
-        let least = min(most, max(0, model.floorHeight - chrome))
-        return min(max(contentHeight, least), most)
+    private var hasHeader: Bool { !model.overview || !model.unresponsiveGroups.isEmpty }
+    private var panelHeight: CGFloat {
+        if !model.overview { return min(model.minHeight, model.maxHeight) }
+        let chrome = headerHeight + footerHeight + 28 + (hasHeader ? 24 : 12)
+        return min(model.maxHeight, max(model.floorHeight, contentHeight + chrome))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if !model.overview { VitalTiles(model: model) }      // the Overview cards already show these numbers
-            if !model.unresponsiveGroups.isEmpty { NotRespondingStrip(model: model) }
-            ScrollView(.vertical, showsIndicators: false) {
+            if hasHeader {
+                VStack(spacing: 12) {
+                    if !model.overview { VitalTiles(model: model) }
+                    if !model.unresponsiveGroups.isEmpty { NotRespondingStrip(model: model) }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .background(GeometryReader { g in Color.clear.preference(key: PanelSizes.self, value: PanelSizes(header: g.size.height)) })
+            }
+            ScrollView(.vertical, showsIndicators: true) {
                 VStack(alignment: .leading, spacing: 12) {
                     if model.overview {
                         OverviewView(model: model)
@@ -32,33 +38,36 @@ struct PanelView: View {
                 }
                 .background(GeometryReader { g in Color.clear.preference(key: PanelSizes.self, value: PanelSizes(content: g.size.height)) })
             }
-            .frame(height: scrollHeight)
-            .background(GeometryReader { g in Color.clear.preference(key: PanelSizes.self, value: PanelSizes(scroll: g.size.height)) })
-            if let p = model.pending { ConfirmBar(model: model, pending: p) }
-            else if let t = model.toast { ToastBar(text: t) }
-            FloatingPill(model: model, storage: model.storage).frame(maxWidth: .infinity, alignment: .trailing)
+            .frame(maxHeight: .infinity)
+            VStack(spacing: 12) {
+                if let p = model.pending { ConfirmBar(model: model, pending: p) }
+                else if let t = model.toast { ToastBar(text: t) }
+                FloatingPill(model: model, storage: model.storage).frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .background(GeometryReader { g in Color.clear.preference(key: PanelSizes.self, value: PanelSizes(footer: g.size.height)) })
         }
         .padding(.horizontal, 14).padding(.top, 16).padding(.bottom, 12)
-        .frame(width: 340)
-        .background(GeometryReader { g in Color.clear.preference(key: PanelSizes.self, value: PanelSizes(root: g.size.height)) })
+        .frame(width: 340, height: panelHeight)
         .onPreferenceChange(PanelSizes.self) { s in
             contentHeight = s.content
-            chrome = s.root - s.scroll
-            model.onHeight?(s.root)
+            headerHeight = s.header
+            footerHeight = s.footer
+            model.onHeight?(panelHeight)
         }
         .panelBackground()
-        .frame(maxHeight: .infinity, alignment: .top)
+        .onChange(of: panelHeight, initial: true) { _, height in model.onHeight?(height) }
         .animation(.easeOut(duration: 0.15), value: model.pending?.id)
     }
 }
 
-/// Heights reported from one layout pass: the whole panel, the list's visible frame and the list's content.
+/// Measure intrinsic sections independently; never derive chrome from the resized window.
 struct PanelSizes: PreferenceKey, Equatable {
-    var root: CGFloat = 0, scroll: CGFloat = 0, content: CGFloat = 0
+    var content: CGFloat = 0, header: CGFloat = 0, footer: CGFloat = 0
     static let defaultValue = PanelSizes()
     static func reduce(value: inout PanelSizes, nextValue: () -> PanelSizes) {
         let n = nextValue()
-        value = PanelSizes(root: max(value.root, n.root), scroll: max(value.scroll, n.scroll), content: max(value.content, n.content))
+        value = PanelSizes(content: max(value.content, n.content), header: max(value.header, n.header), footer: max(value.footer, n.footer))
     }
 }
 
@@ -149,6 +158,7 @@ struct FloatingPill: View {
     @ObservedObject var storage: StorageStore
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var loginError: String?
 
     var body: some View {
         HStack(spacing: 14) {
@@ -186,11 +196,17 @@ struct FloatingPill: View {
         .foregroundStyle(Color.primary.opacity(0.8))
         .padding(.horizontal, 16).padding(.vertical, 7)
         .modifier(PillBackground(reduceTransparency: reduceTransparency))
+        .alert("Launch at login", isPresented: Binding(get: { loginError != nil }, set: { if !$0 { loginError = nil } })) {
+            Button("OK", role: .cancel) { loginError = nil }
+        } message: { Text(loginError ?? "") }
     }
     private func setLaunchAtLogin(_ on: Bool) {
         do {
             if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
-        } catch { NSLog("Vital: launch at login failed: \(error.localizedDescription)") }
+        } catch { loginError = "Could not change launch at login. \(error.localizedDescription)" }
+        if on && SMAppService.mainApp.status == .requiresApproval {
+            SMAppService.openSystemSettingsLoginItems()
+        }
         launchAtLogin = SMAppService.mainApp.status == .enabled
     }
 }

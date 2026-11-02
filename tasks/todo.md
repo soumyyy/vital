@@ -14,13 +14,24 @@ Goal: ship Vital v1 per docs/superpowers/specs/2026-11-02-vital-design.md, follo
 - [x] 10 Icon and packaging
 - [x] 11 Verification and docs
 
-## Review
+## Current release handoff — 2026-11-03
+
+Start with [docs/STATUS.md](../docs/STATUS.md), [release verification](../docs/TESTING.md), and [docs/RELEASING.md](../docs/RELEASING.md). The rounds below are historical.
+
+- The owner authorized public source/history. `soumyyy/vital` is now public; Gitleaks found no credentials in 39 historical commits or the current source.
+- Source is 0.1.2 (4), combining both sessions' UI, app installation, packaging, and updater work.
+- Fan ownership is recorded before manual writes. Helper restarts restore Auto from a private root-owned journal. Failed recovery blocks manual control and retries.
+- Update replacement uses an atomic path exchange after creating a backup.
+- The local suite passes 142 tests. CI tests/builds macOS 15 and 26. Release scripts require a committed source revision, signing, and notarization.
+- The candidate must be built, notarized, published, and exercised through the public update feed. Physical sleep/wake, another Mac, and approval dialogs remain hands-on checks.
+
+## Initial review (historical)
 Built and pushed to the private repo soumyyy/vital. 52 unit and integration tests pass.
 
 Measured (M3 MacBook Pro, 8 GB): 12 MB footprint and about 0% CPU with the panel never opened; about 90 MB and 3% CPU while open; about 28 MB after closing. The closed-after-use figure misses the 20 MB goal because SwiftUI, AppKit and Core Animation keep caches. Fix if it matters: run the panel UI in a short-lived helper process.
 
 Not done or not verified:
-- No Developer ID certificate on this Mac (only Apple Development), so notarization is scripted but untried.
+- At the initial review, only Apple Development signing was available. Superseded: Developer ID signing and notarization now work; see the current release handoff above.
 - Only this M3 was tested. Other chips rely on runtime sensor discovery and `--dump-sensors` fixtures.
 - Quit and Force Quit are covered by tests against real spawned processes, but the panel buttons were not clicked end to end.
 - macOS 14 and 15 fallback (frosted material) was not run, only macOS 27.
@@ -30,7 +41,7 @@ Not done or not verified:
 
 Done: new heartbeat icon (menu bar glyph and app icon); storage rework (parallel streamed scan, 143 s down to 42 s, cached across panel opens, resumable, Full Disk Access hint); refresh button; 5 s CPU smoothing (total, clusters, per process); CPU shown as share of the whole CPU plus per-core style; plain "8 cores" wording; Fans card.
 
-Fan control: NOT built. An unprivileged SMC write is refused (kIOReturnNotPrivileged), so it needs a root helper. Design and findings are in docs/superpowers/specs/2026-11-02-fan-control-helper.md. Needs the owner's decision and a Developer ID certificate.
+Historical Round 2 status: fan control was not built yet. Superseded: the root helper is now implemented and live fan control works. Current design and verification are in docs/superpowers/specs/2026-11-02-fan-control-helper.md.
 
 Not verified visually in the live menu bar this round: the display was off, so the new panel and icon were checked through offscreen rendering (`Vital --render-panel`, `--dump-icons`) and command line probes only. 68 tests pass; closed-panel footprint 12 MB, about 0% CPU.
 
@@ -86,6 +97,30 @@ Not verified: the live panel on screen (resize animation, top edge staying under
 
 ## Round 7: updates
 - About window (About Vital, Update Software…): version, one line about Vital, check, release notes, Update and Restart.
-- Core in VitalCore (`AppVersion`, `UpdateFeed.parse`, `UpdatePolicy`) with tests; install in `Updater.swift`: download, SHA-256, `ditto` unzip, Security.framework signature + same-Team-ID check, atomic swap with rollback, relaunch, fan helper unregistered before the swap and registered again on the next launch.
+- Core in VitalCore (`AppVersion`, `UpdateFeed.parse`, `UpdatePolicy`) with tests; install in `Updater.swift`: download, SHA-256, `ditto` unzip, Security.framework signature + same-Team-ID check, staged bundle replacement with rollback, relaunch, fan helper unregistered before the swap and registered again on the next launch.
 - Verified end to end against a local server on a temp copy: 0.1.0 became 0.2.0, signature valid, app relaunched, no leftovers. A wrong checksum and a build from another signer were both refused and the old app stayed.
 - Not verified: against a real GitHub release (repo is private; the API returns 404 until it is public), the fan helper re-approval after an update, a read-only install folder in the UI.
+
+## Panel consistency, storage overview, and logo concepts
+- Removed the five-minute graph caption.
+- Replaced the window/content sizing feedback loop with a fixed 480 pt app-list panel, intrinsic header/footer sizing, and a flexible scrolling body. Overview still fits its content. Tiles resist vertical compression.
+- Added a Mac storage capacity card (total, available including reclaimable, used, percent full) independent of folder scan coverage, a macOS Storage shortcut, and an explicit Other & unmeasured remainder.
+- Added five editable SVG logo concepts and an interactive comparison in design/logo-mockups. The installed icon is unchanged.
+- Validation: release app builds and passes strict signature verification; 124 tests pass; built-in renderer produced all four tabs at 480 pt and Overview at 404 pt, plus a memory-pressure fixture at 480 pt. Native live inspection could not be completed because computer-use app lookup timed out twice. macOS Storage shortcut was not clicked in this session.
+
+## Follow-up: tile sizing still varied
+- Made each selector explicitly 75 × 68 pt at the 340 pt panel width. Numeric values keep their 20 pt font; the sensor-unavailable word has a separate fixed text style. Removed per-value shrinking.
+- Added --cycle-tabs and --mock=tile-limits to the existing renderer: the same hosted view cycles CPU → Memory → Storage → Heat → CPU at 100% CPU/memory/storage with a memory warning and Critical sensor fallback.
+- Verified identical value glyph bounds and positions through all five switches and a 480 pt panel for every tab; release build, strict signature verification, and diff checks pass. Native UI inspection still times out.
+- Found the live process was still the build launched at 00:02. AppleScript quit incorrectly reported it absent; terminated that specific stale process and launched the new build (PID 67883).
+
+## Default Overview and menu-bar toggle
+- Removed screenshot tab overrides from PanelController.open; each normal opening creates a fresh model on Overview. --render-panel retains tab selection for captures.
+- Outside-click monitor now ignores clicks within the status button's screen rectangle, leaving the mouse-up button action to toggle the panel once. Previously the mouse-down monitor could close it before mouse-up reopened it.
+- Release build, strict signature verification and diff checks pass. Restarted without the old --tab=CPU launch argument. Live mouse interaction remains unverified because native UI tooling times out.
+
+## Normal macOS installation and Spotlight
+- Installed the current signed app at /Applications/Vital.app. Unregistered the development bundle from Launch Services, registered the installed bundle, and imported Spotlight metadata. mdfind returns /Applications/Vital.app; mdls identifies Vital as com.apple.application-bundle with the correct identifier and version.
+- Added utility category, English development region and MIT copyright metadata. Added standard About, Update Software and Cmd-Q menu commands, plus applicationShouldHandleReopen so Finder/Spotlight launches reveal the panel when Vital is already running.
+- Stopped the development process and launched with open -a Vital. Repeating open -a Vital keeps one installed process. Fan helper was unregistered from the old bundle and registered from Applications; status is enabled (1).
+- Release build, plist lint, strict signature verification and diff checks pass. For subsequent changes, update and relaunch the installed /Applications copy; launching build/Vital.app would start a development copy instead.

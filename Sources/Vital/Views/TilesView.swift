@@ -6,24 +6,33 @@ struct VitalTiles: View {
     @ObservedObject var model: PanelModel
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(PanelTab.allCases) { tab in tile(tab) }
+        // Fix each button's geometry, rather than relying on its label's ideal size.
+        // Values must never resize the selector when load, warnings or the selected tab change.
+        GeometryReader { geometry in
+            let width = max(0, (geometry.size.width - 12) / 4)
+            HStack(spacing: 4) {
+                ForEach(PanelTab.allCases) { tab in tile(tab, width: width) }
+            }
         }
+        .frame(height: 68)
     }
 
-    private func tile(_ tab: PanelTab) -> some View {
+    private func tile(_ tab: PanelTab, width: CGFloat) -> some View {
         let r = reading(tab)
         let selected = model.tab == tab && !model.overview
         return Button { model.select(tab) } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(tab.rawValue).font(Typo.small).foregroundStyle(selected ? .primary : .secondary)
-                Text(r.value).font(Typo.number).monospacedDigit()
-                    .lineLimit(1).minimumScaleFactor(0.6)
+                    .lineLimit(1).frame(height: 14, alignment: .leading)
+                Text(r.value).font(tab == .heat && r.fraction == nil ? Typo.mediumBold : Typo.number).monospacedDigit()
+                    .lineLimit(1)
+                    .frame(height: 24, alignment: .leading)
                     .foregroundStyle(r.fraction == nil ? .secondary : .primary)
                 Meter(fraction: r.fraction, level: r.level).padding(.top, 2)
             }
+            .frame(width: max(0, width - 18), alignment: .leading)
             .padding(.horizontal, 9).padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(width: width, height: 68, alignment: .topLeading)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(selected ? Color.primary.opacity(0.09) : .clear))
             .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }

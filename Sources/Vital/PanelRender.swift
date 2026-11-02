@@ -4,7 +4,7 @@ import VitalCore
 
 /// Renders the panel into a PNG without a display (layout check; glass is not drawn offscreen).
 /// Usage: Vital --render-panel out.png [--tab=Heat] [--expand-first] [--details] [--more] [--overview]
-///        [--appearance=light|dark] [--mock=calm|busy|struggling] [--wait=seconds] [--max-height=pt]
+///        [--cycle-tabs] [--appearance=light|dark] [--mock=calm|busy|struggling|memory-pressure|tile-limits] [--wait=seconds] [--max-height=pt]
 /// `--mock` edits a live reading to stage a state for screenshots (render only, never in the app).
 enum PanelRender {
     @MainActor
@@ -67,12 +67,25 @@ enum PanelRender {
         window.setContentSize(NSSize(width: 340, height: min(limit, max(model.floorHeight, height.rounded(.up)))))
         host.layoutSubtreeIfNeeded()
         spin(0.2)
-        appearance.performAsCurrentDrawingAppearance {
-            guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
-            host.cacheDisplay(in: host.bounds, to: rep)
-            try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
-            print("wrote \(path) (\(Int(host.frame.height)) pt tall)")
+        func capture(_ destination: String) {
+            appearance.performAsCurrentDrawingAppearance {
+                guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
+                host.cacheDisplay(in: host.bounds, to: rep)
+                try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: destination))
+                print("wrote \(destination) (\(Int(host.frame.height)) pt tall)")
+            }
         }
+        if args.contains("--cycle-tabs") {
+            // Switch the same hosted view, including a warning and long values. Separate launches
+            // cannot catch layout state carried over from another tab.
+            let base = (path as NSString).deletingPathExtension
+            for (index, tab) in (PanelTab.allCases + [.cpu]).enumerated() {
+                model.select(tab)
+                for _ in 0..<4 { host.layoutSubtreeIfNeeded(); spin(0.1) }
+                capture("\(base)-\(index)-\(tab.rawValue.lowercased()).png")
+            }
+        }
+        capture(path)
     }
 
     @MainActor private static func spin(_ seconds: Double) {
@@ -90,6 +103,20 @@ enum PanelRender {
         s.pageInBytesPerSec = 0
         if let st = s.storage { s.storage = StorageReading(totalBytes: st.totalBytes, availableBytes: st.totalBytes / 3) }
         switch mock {
+        case "tile-limits":
+            s.band = .busy
+            s.cpu?.total = 1
+            if var memory = s.memory {
+                memory.usedBytes = memory.totalBytes
+                s.memory = memory
+            }
+            s.memory?.pressure = .elevated
+            if let st = s.storage { s.storage = StorageReading(totalBytes: st.totalBytes, availableBytes: 0) }
+            s.thermal.hottestCelsius = nil
+            s.thermal.state = .critical
+        case "memory-pressure":
+            s.band = .busy
+            s.memory?.pressure = .elevated
         case "busy":
             s.band = .busy
             s.cpu?.total = 0.72

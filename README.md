@@ -2,29 +2,52 @@
 
 A lean menu bar monitor for Apple Silicon Macs. It answers one question: what is eating my Mac right now, and can I stop it?
 
+Download the signed, notarized app from [GitHub Releases](https://github.com/soumyyy/vital/releases/latest). See [installation and removal](docs/INSTALL.md).
+
+For development, start with [current status and next steps](docs/STATUS.md). Use the [release runbook](docs/RELEASING.md) for distribution.
+
 - **One headline**: a single sentence says whether your Mac is fine and, if not, which app is the cause, with a Quit button. When apps stop responding it turns red with Force Quit.
 - **Four vitals, one number each**: CPU, memory, storage and heat. Colour appears only when something needs attention. Tap a vital to list the apps using the most of it (folders, for storage).
 - **Breakdown per app**: Chrome plus its helpers is one entry, expandable to its processes (merged by name) with Quit and Force Quit. CPU is a share of the whole CPU, smoothed over 5 seconds; hover a process for the Activity Monitor figure (100% = one core).
 - **Details on demand**: each vital has a Details section, closed by default: performance and efficiency cores; memory pressure, swap and memory read back from disk; free space and which apps read and write the disk; temperatures, battery (charge, watts, time left, health, cycles), network speed and apps keeping the Mac awake. Idle wake-ups show in an expanded app on Heat.
 - **Overview**: the grid button in the pill shows CPU, memory, disk, network and heat graphs for the last five minutes, storage capacity and the battery.
 - **Updates**: three-dot menu → **Update Software…** (also in the right-click menu and the About window). Vital checks the latest GitHub release, shows what changed, downloads the zip, checks its SHA-256 and code signature (same developer as the running copy), replaces itself and restarts. It never checks on its own.
-- **Fans**: live speed and manual control at the top of Heat. Click **Turn on**, then approve Vital in System Settings → General → Login Items & Extensions. The bundled root helper clamps speeds to hardware limits and resets to Auto on disconnect, sleep, high thermal pressure, or a missed heartbeat. Manual mode is temporary and is not saved across launches. Direct `F0Md` fan control is supported; Macs that require `Ftst` unlocking or Intel `FS!` control show an error.
+- **Fans**: live speed and manual control at the top of Heat. Click **Turn on**, then approve Vital in System Settings → General → Login Items & Extensions. The bundled root helper clamps speeds to hardware limits and resets to Auto on disconnect, sleep, high thermal pressure, or a missed heartbeat. Manual mode is temporary and is not saved across launches. The helper records ownership before changing hardware and recovers Auto after a helper restart. Direct `F0Md` fan control is supported; Macs that require `Ftst` unlocking or Intel `FS!` control show an error.
 - **Refresh** button for fresh readings, and a rescan when Storage is selected (about 40 s for a full scan on an SSD with 450 GB used).
 - **Quit and Force Quit** with confirmation, protected system processes, and truthful results (including processes stuck in the kernel).
-- The panel is as tall as its content (up to 680 pt), so a calm Mac gets a short panel.
+- The app-list panel keeps a consistent height; Overview fits its content and available screen space.
 - Liquid Glass panel on macOS 26+, frosted material on macOS 14 and 15, opaque with Reduce Transparency.
 
-macOS 14+, Apple Silicon (M1 and later). No telemetry. Vital touches the network only when you press **Update Software**, and then it makes one request to the GitHub Releases API.
+macOS 14+, Apple Silicon (M1 and later). Physical validation currently covers an M3 MacBook Pro on macOS 27; broader hardware and older macOS UI validation remains in progress. No telemetry. Update checks start only when you choose **Update Software**. Downloading an approved update also retrieves its release archive.
 
 ## Build
 
+For normal use, launch the installed `/Applications/Vital.app`. The commands below create a development copy; avoid running both copies at once.
+
 ```sh
-Scripts/build-app.sh release     # build/Vital.app (ad-hoc signed)
+Scripts/build-app.sh release     # build/Vital.app (local development signing)
 open build/Vital.app
 swift test
 ```
 
-`Scripts/release.sh` makes a DMG. With `SIGN_IDENTITY="Developer ID Application: ..."` and `NOTARY_PROFILE=<notarytool keychain profile>` it signs and notarizes.
+`Scripts/release.sh` writes distribution artifacts to `build/release/`, separately from the running development app. Use a Developer ID Application identity and a validated `notarytool` Keychain profile:
+
+```sh
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+NOTARY_PROFILE=vital-notary Scripts/release.sh
+```
+
+The script signs the app and helper with hardened runtime and secure timestamps, notarizes and staples the app, then signs, notarizes, and staples the DMG. It verifies Gatekeeper acceptance and creates a ZIP for the updater, `SHA256SUMS`, and a checksum line in `release-notes.txt`. Publishing remains a separate step. `SKIP_BUILD=1` resumes packaging and notarization of an existing signed release app.
+
+## Update Vital
+
+In the app, choose **Update Software…**, review the version and release notes, then click **Update and Restart**. Checks and downloads happen only when you request them. Keep Vital in a writable Applications folder; if the folder cannot be replaced, the app explains how to update using the release download instead.
+
+An update verifies the archive checksum when supplied, the app version and identity, and an Apple-issued Developer ID signature from the same team. It ends manual fan control before replacing the bundle. Only previously enabled fan control is restored. If macOS requires approval again, Heat shows **Approve control** and links to System Settings. Protected folder scans still ask only when you explicitly choose Scan; launch at login remains opt-in.
+
+To publish a new update, choose a higher version and build number, run the signed/notarized release script, then upload both the generated ZIP and DMG to a GitHub Release tagged `v<version>` in the chosen public release repository. Set `UpdateFeed.defaultURL` to that repository before building. Include the ZIP checksum line from `release-notes.txt` in the release body. The in-app updater consumes the ZIP; the DMG is for manual installation. Release builds below `build/release/` are not published automatically. The update feed uses the public `soumyyy/vital` repository without credentials. Never embed a GitHub token in the app.
+
+Homebrew-managed installations can instead use `brew upgrade --cask <owner>/tap/vital` once the tap is published. Each cask release must point to the matching DMG version and checksum.
 
 ## Enable fan control
 
@@ -82,11 +105,6 @@ Sensor approach informed by [Stats](https://github.com/exelban/Stats) and [macmo
 
 License: MIT.
 
-## Publishing an update
+## Release context
 
-1. Build the release: `VERSION=0.2.0 BUILD=3 SIGN_IDENTITY="..." Scripts/release.sh`. It writes `build/Vital-0.2.0.zip` and `build/Vital.dmg`, and prints the zip's checksum and the `gh release create` command.
-2. The release tag must be `v0.2.0`; attach `Vital-0.2.0.zip` (the in-app updater downloads a `Vital*.zip` asset). Put a line `sha256: <hex>` in the notes if GitHub does not show a digest for the asset.
-3. The repository must be public for the updater to see releases. Updates install only if the new app is signed by the same developer as the running one. An ad hoc build accepts an update only with a checksum.
-4. After an update Vital re-registers the fan helper; macOS may ask for approval again.
-
-Test an update without publishing: serve a `latest.json` and zip from `http://127.0.0.1`, then run `Vital --probe-update --install --update-feed=<url> --update-target=<copy of Vital.app>`.
+Read [current status and next steps](docs/STATUS.md) when resuming work. The [release runbook](docs/RELEASING.md) covers versioning, signing, notarization, publishing, permission checks, and Homebrew Cask.

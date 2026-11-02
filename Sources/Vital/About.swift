@@ -80,6 +80,9 @@ private struct UpdateSection: View {
                     Text(notes).font(.system(size: 11)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                Text("Vital will restart and return fans to Auto. macOS may ask you to approve fan control again.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                 Button("Update and Restart") { model.install() }.keyboardShortcut(.defaultAction)
                 if let page = release.pageURL { Link("Release notes", destination: page).font(.system(size: 11)) }
             case .downloading:

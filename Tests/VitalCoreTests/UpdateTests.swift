@@ -52,3 +52,8 @@ private func feed(tag: String = "v0.2.0", draft: Bool = false, pre: Bool = false
     #expect(s == "What's new\n- Faster")
     #expect(UpdatePolicy.summary(of: String(repeating: "x", count: 900), limit: 50).count == 51)
 }
+
+@Test func updateAssetNamesCannotEscapeTheDownloadFolder() {
+    #expect(UpdateFeed.parse(feed(asset: "Vital/../../outside.zip")) == nil)
+    #expect(UpdateFeed.parse(feed(asset: "Vital\\..\\outside.zip")) == nil)
+}

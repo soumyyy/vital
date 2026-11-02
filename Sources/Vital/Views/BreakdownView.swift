@@ -194,21 +194,24 @@ struct StorageBreakdownView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ScanProgress(store: store).padding(.horizontal, 4)
+            if let capacity = store.capacity ?? model.snapshot.storage {
+                StorageCapacityCard(reading: capacity)
+            }
+            SectionLabel(title: "Folders on this Mac") { ScanProgress(store: store) }
             if let b = store.breakdown {
                 let used = (store.capacity ?? model.snapshot.storage)?.usedBytes ?? 0
                 VStack(spacing: 0) {
                     ForEach(ordered(b.categories)) { c in CategoryRow(model: model, category: c) }
                     if b.isComplete {
                         HStack(alignment: .firstTextBaseline) {
-                            Text("Other").font(Typo.mediumBold).foregroundStyle(.secondary)
+                            Text("Other & unmeasured").font(Typo.mediumBold).foregroundStyle(.secondary)
                             Spacer()
                             Text(Format.bytes(b.otherBytes(usedBytes: used), base: .decimal)).font(Typo.medium).monospacedDigit()
                                 .foregroundStyle(.secondary)
                             Color.clear.frame(width: 9, height: 1)     // lines up with the chevrons above
                         }
                         .padding(.vertical, 6)
-                        .help("System data, snapshots, swap and folders Vital cannot read")
+                        .help("Space not accounted for by this scan, including snapshots, other users and unreadable or unscanned folders. Folder totals may differ because APFS shares file data and macOS includes reclaimable space in available storage.")
                         .accessibilityElement(children: .combine)
                     }
                 }
@@ -227,6 +230,43 @@ struct StorageBreakdownView: View {
             if ra == 0 && a.element.bytes != b.element.bytes { return a.element.bytes > b.element.bytes }
             return a.offset < b.offset
         }.map(\.element)
+    }
+}
+
+/// Capacity comes from macOS, independently of the partial folder scan below.
+struct StorageCapacityCard: View {
+    let reading: StorageReading
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Mac storage").font(Typo.mediumBold)
+                Spacer()
+                Text("\(Format.bytes(reading.totalBytes, base: .decimal)) total")
+                    .font(Typo.small).foregroundStyle(.secondary).monospacedDigit()
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(Format.bytes(reading.availableBytes, base: .decimal)).font(Typo.large).monospacedDigit()
+                Text("available").font(Typo.small).foregroundStyle(.secondary)
+                Spacer()
+            }
+            Meter(fraction: reading.usedFraction, level: Health.storage(usedFraction: reading.usedFraction))
+                .frame(height: 6)
+            HStack {
+                Text("\(Format.bytes(reading.usedBytes, base: .decimal)) used")
+                Spacer()
+                Text("\(Format.percent(reading.usedFraction)) full")
+            }
+            .font(Typo.small).foregroundStyle(.secondary).monospacedDigit()
+            Text("Startup disk · Available includes space macOS can reclaim.")
+                .font(Typo.small).foregroundStyle(.secondary)
+            Button("Open macOS Storage…") {
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.settings.Storage")!)
+            }
+            .buttonStyle(PillButton())
+        }
+        .card()
+        .accessibilityElement(children: .contain)
     }
 }
 

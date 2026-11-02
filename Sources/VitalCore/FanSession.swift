@@ -45,6 +45,7 @@ public final class FanSession {
     private let clock: () -> TimeInterval
     private let hot: () -> Bool
     private var originalAuto: [Int: Double] = [:]
+    private let recovery: FanRecoveryStore?
     public private(set) var targets: [Int: Double] = [:]
     public private(set) var resetError: String?
     private var heartbeat: TimeInterval = 0
@@ -52,8 +53,15 @@ public final class FanSession {
     private var lastChange: TimeInterval = -.infinity
 
     public init(hardware: FanHardware = SMCFanHardware(), clock: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
-                hot: @escaping () -> Bool = { ProcessInfo.processInfo.thermalState == .serious || ProcessInfo.processInfo.thermalState == .critical }) {
-        self.hardware = hardware; self.clock = clock; self.hot = hot; lastTick = clock()
+                hot: @escaping () -> Bool = { ProcessInfo.processInfo.thermalState == .serious || ProcessInfo.processInfo.thermalState == .critical },
+                recovery: FanRecoveryStore? = nil) {
+        self.hardware = hardware; self.clock = clock; self.hot = hot; self.recovery = recovery; lastTick = clock()
+        do {
+            originalAuto = try recovery?.load() ?? [:]
+            reset() // Recover a previous helper's interrupted manual session before accepting requests.
+        } catch {
+            resetError = "Could not read fan recovery state. Manual control is disabled: \(error.localizedDescription)"
+        }
     }
     public func renew() { heartbeat = clock() }
     public func set(fan: Int, rpm: Double) throws {
@@ -72,7 +80,13 @@ public final class FanSession {
         guard let mode = hardware.number(modeKey), mode == 0 || mode == 3 || (mode == 1 && originalAuto[fan] != nil) else {
             throw FanSessionError("Fan is unsupported or controlled by another app. Select Auto there first.")
         }
-        if originalAuto[fan] == nil { originalAuto[fan] = mode }
+        if originalAuto[fan] == nil {
+            var modes = originalAuto
+            modes[fan] = mode
+            // Commit ownership before the first hardware write, including the mode/target gap.
+            try recovery?.save(modes)
+            originalAuto = modes
+        }
         lastChange = clock()
         do {
             try hardware.write(modeKey, value: 1)
@@ -96,7 +110,11 @@ public final class FanSession {
         guard verify({ hardware.number("F\(fan)Md") == mode }) else {
             throw FanSessionError("Fan controller did not return to Auto.")
         }
-        originalAuto.removeValue(forKey: fan)
+        var modes = originalAuto
+        modes.removeValue(forKey: fan)
+        // Keep the recovery record until hardware readback confirms Auto.
+        try recovery?.save(modes)
+        originalAuto = modes
         targets.removeValue(forKey: fan)
         if originalAuto.isEmpty { resetError = nil }
     }

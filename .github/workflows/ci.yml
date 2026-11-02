@@ -1,0 +1,27 @@
+name: Verify
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Test core behavior and recovery
+        run: swift test
+      - name: Build the app and helper
+        run: swift build -c release
+      - name: Validate metadata and scripts
+        run: |
+          plutil -lint Resources/Info.plist Resources/dev.soumya.vital.fans.plist
+          bash -n Scripts/build-app.sh Scripts/release.sh
+          git diff --check

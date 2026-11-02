@@ -160,3 +160,107 @@ private final class Environment {
     #expect(env.session.resetError == nil)
     #expect(env.hardware.values["F0Md"] == 0)
 }
+
+private final class Recovery: FanRecoveryStore {
+    var modes: [Int: Double] = [:]
+    var failLoad = false
+    var failSave = false
+    func load() throws -> [Int: Double] {
+        if failLoad { throw FanSessionError("Unreadable") }
+        return modes
+    }
+    func save(_ modes: [Int: Double]) throws {
+        if failSave { throw FanSessionError("Unwritable") }
+        self.modes = modes
+    }
+}
+
+@Test func helperRestartRestoresRecordedAutomaticMode() throws {
+    let hardware = Hardware(), recovery = Recovery()
+    hardware.values["F0Md"] = 3
+    var first: FanSession? = FanSession(hardware: hardware, recovery: recovery)
+    try first!.set(fan: 0, rpm: 4000)
+    #expect(recovery.modes == [0: 3])
+    #expect(hardware.values["F0Md"] == 1)
+    first = nil // Simulate abrupt helper loss without reset or an invalidation callback.
+    let restarted = FanSession(hardware: hardware, recovery: recovery)
+    #expect(hardware.values["F0Md"] == 3)
+    #expect(recovery.modes.isEmpty)
+    #expect(restarted.targets.isEmpty)
+    #expect(restarted.resetError == nil)
+}
+
+@Test func recoveryFailurePreventsTheFirstHardwareWrite() {
+    let hardware = Hardware(), recovery = Recovery()
+    recovery.failSave = true
+    let session = FanSession(hardware: hardware, recovery: recovery)
+    #expect(throws: FanSessionError.self) { try session.set(fan: 0, rpm: 4000) }
+    #expect(hardware.writes.isEmpty)
+    #expect(session.targets.isEmpty)
+}
+
+@Test func unreadableRecoveryRecordBlocksManualControl() {
+    let hardware = Hardware(), recovery = Recovery()
+    recovery.failLoad = true
+    let session = FanSession(hardware: hardware, recovery: recovery)
+    #expect(session.resetError != nil)
+    #expect(throws: FanSessionError.self) { try session.set(fan: 0, rpm: 4000) }
+    #expect(hardware.writes.isEmpty)
+}
+
+@Test func restartRetriesFailedAutomaticRecovery() throws {
+    let hardware = Hardware(), recovery = Recovery()
+    recovery.modes = [0: 0]
+    hardware.values["F0Md"] = 1
+    hardware.failKey = "F0Md"
+    let restarted = FanSession(hardware: hardware, recovery: recovery)
+    #expect(restarted.resetError != nil)
+    #expect(recovery.modes == [0: 0])
+    #expect(throws: FanSessionError.self) { try restarted.set(fan: 0, rpm: 4000) }
+    hardware.failKey = nil
+    restarted.tick()
+    #expect(hardware.values["F0Md"] == 0)
+    #expect(recovery.modes.isEmpty)
+    #expect(restarted.resetError == nil)
+}
+
+@Test func crashBetweenJournalAndHardwareWriteIsSafe() {
+    let hardware = Hardware(), recovery = Recovery()
+    recovery.modes = [0: 3]
+    hardware.values["F0Md"] = 3
+    let restarted = FanSession(hardware: hardware, recovery: recovery)
+    #expect(hardware.values["F0Md"] == 3)
+    #expect(recovery.modes.isEmpty)
+    #expect(restarted.resetError == nil)
+}
+
+@Test func recoveryFileRoundTripsAndRejectsCorruption() throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("state.json")
+    let store = FanRecoveryFile(url: url)
+    #expect(try store.load().isEmpty)
+    try store.save([0: 3, 1: 0])
+    #expect(try FanRecoveryFile(url: url).load() == [0: 3, 1: 0])
+    let mode = try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? NSNumber
+    #expect(mode?.intValue == 0o600)
+    try Data("{\"version\":1,\"modes\":{\"0\":1}}".utf8).write(to: url)
+    #expect(throws: (any Error).self) { try store.load() }
+}
+
+@Test func recoveryRetainsOnlyFansThatStillNeedRestoration() {
+    let hardware = Hardware(), recovery = Recovery()
+    hardware.values["FNum"] = 2
+    hardware.values["F0Md"] = 1
+    hardware.values["F1Md"] = 1
+    hardware.failKey = "F0Md"
+    recovery.modes = [0: 3, 1: 0]
+    let restarted = FanSession(hardware: hardware, recovery: recovery)
+    #expect(hardware.values["F1Md"] == 0)
+    #expect(recovery.modes == [0: 3])
+    #expect(restarted.resetError != nil)
+    hardware.failKey = nil
+    restarted.tick()
+    #expect(hardware.values["F0Md"] == 3)
+    #expect(recovery.modes.isEmpty)
+}

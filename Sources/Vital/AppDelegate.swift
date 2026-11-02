@@ -8,8 +8,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) { appState?.fanController.stop() }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        FanClient.completeUpdate()
+        installApplicationMenu()
         let state = AppState()
+        state.fanController.resumeAfterUpdate()
         appState = state
         statusController = StatusItemController(appState: state)
         state.start()
@@ -25,4 +26,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
+    // Finder, Spotlight and `open -a Vital` send a reopen event to an already running app.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        statusController?.openPanel()
+        return false
+    }
+
+    private func installApplicationMenu() {
+        let main = NSMenu()
+        let app = NSMenu(title: "Vital")
+        let item = NSMenuItem()
+        item.submenu = app
+        main.addItem(item)
+        app.addItem(withTitle: "About Vital", action: #selector(showAbout), keyEquivalent: "").target = self
+        app.addItem(withTitle: "Update Software…", action: #selector(updateSoftware), keyEquivalent: "").target = self
+        app.addItem(.separator())
+        app.addItem(withTitle: "Quit Vital", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q").target = NSApp
+        NSApp.mainMenu = main
+    }
+
+    @objc private func showAbout() { AboutPanel.show() }
+    @objc private func updateSoftware() { AboutPanel.show(checkNow: true) }
+
 }

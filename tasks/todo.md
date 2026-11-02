@@ -25,3 +25,13 @@ Not done or not verified:
 - Quit and Force Quit are covered by tests against real spawned processes, but the panel buttons were not clicked end to end.
 - macOS 14 and 15 fallback (frosted material) was not run, only macOS 27.
 - Heavy-load test (CPU burner and memory hog against the live UI) was not run.
+
+## Round 2 (owner feedback)
+
+Done: new heartbeat icon (menu bar glyph and app icon); storage rework (parallel streamed scan, 143 s down to 42 s, cached across panel opens, resumable, Full Disk Access hint); refresh button; 5 s CPU smoothing (total, clusters, per process); CPU shown as share of the whole CPU plus per-core style; plain "8 cores" wording; Fans card.
+
+Fan control: NOT built. An unprivileged SMC write is refused (kIOReturnNotPrivileged), so it needs a root helper. Design and findings are in docs/superpowers/specs/2026-11-02-fan-control-helper.md. Needs the owner's decision and a Developer ID certificate.
+
+Not verified visually in the live menu bar this round: the display was off, so the new panel and icon were checked through offscreen rendering (`Vital --render-panel`, `--dump-icons`) and command line probes only. 68 tests pass; closed-panel footprint 12 MB, about 0% CPU.
+
+The Opus delegate ran out of usage mid-task after the icon and part of the storage work; the rest was finished directly.

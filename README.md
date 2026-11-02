@@ -2,8 +2,10 @@
 
 A lean menu bar monitor for Apple Silicon Macs. It answers one question: what is eating my Mac right now, and can I stop it?
 
-- **CPU** (E and P cores), **memory** with swap and pressure, **storage**, **temperature and fans** on a green-yellow-red scale.
+- **CPU** as plain core counts, shown both as a share of the whole CPU and Activity Monitor style (100% = one core), smoothed over 5 seconds. **Memory** with swap and pressure, **storage**, **temperature and fans** on a green-yellow-red scale.
 - **Breakdown per app**: Chrome plus its helpers is one entry, expandable to individual processes. Tabs rank by CPU, memory, storage or heat (power draw).
+- **Fans**: live speed with min and max. Changing fan speed needs a root helper that is not built; the control is disabled and says why (see `docs/superpowers/specs/2026-11-02-fan-control-helper.md`).
+- **Refresh** button for a fresh sample, and a rescan on the Storage tab (about 40 s for a full scan on an SSD with 450 GB used).
 - **Quit and Force Quit** with confirmation, protected system processes, and truthful results (including processes stuck in the kernel).
 - **Mac is struggling** strip with "Force Quit not responding" when the machine is overloaded.
 - Liquid Glass panel on macOS 26+, frosted material on macOS 14 and 15, opaque with Reduce Transparency.
@@ -15,7 +17,7 @@ macOS 14+, Apple Silicon (M1 and later). No network access, no telemetry.
 ```sh
 Scripts/build-app.sh release     # build/Vital.app (ad-hoc signed)
 open build/Vital.app
-swift test                       # 52 tests
+swift test                       # 68 tests
 ```
 
 `Scripts/release.sh` makes a DMG. With `SIGN_IDENTITY="Developer ID Application: ..."` and `NOTARY_PROFILE=<notarytool keychain profile>` it signs and notarizes.
@@ -24,7 +26,7 @@ swift test                       # 52 tests
 
 | State | Footprint | CPU |
 |---|---|---|
-| Panel never opened | 12 MB | about 0% (5 s cadence, no process scan) |
+| Panel never opened | 12 MB (re-measured after the last changes) | about 0% (5 s cadence, no process scan) |
 | Panel open | about 90 MB (mostly window graphics) | about 3% at 1 s cadence |
 | Panel closed again | about 28 MB (frameworks keep some caches) | about 0% |
 

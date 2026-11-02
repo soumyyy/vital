@@ -24,6 +24,7 @@ public struct CPUSmoother {
     private var efficiency = TimeWindowMean(window: window)
     private var performance = TimeWindowMean(window: window)
     private var perProcess: [ProcessKey: TimeWindowMean] = [:]
+    private var perProcessWake: [ProcessKey: TimeWindowMean] = [:]
     private var seen = Set<ProcessKey>()
 
     public init() {}
@@ -47,17 +48,22 @@ public struct CPUSmoother {
                 var mean = perProcess[row.key] ?? TimeWindowMean(window: Self.window)
                 r.cpuCores = mean.add(row.cpuCores, at: now)
                 perProcess[row.key] = mean
+                var wake = perProcessWake[row.key] ?? TimeWindowMean(window: Self.window)
+                r.wakeupsPerSec = wake.add(row.wakeupsPerSec, at: now)
+                perProcessWake[row.key] = wake
             } else {
                 seen.insert(row.key)
                 r.cpuCores = 0
+                r.wakeupsPerSec = 0
             }
             return r
         }
         seen = seen.intersection(live)
         perProcess = perProcess.filter { live.contains($0.key) }
+        perProcessWake = perProcessWake.filter { live.contains($0.key) }
         return out
     }
 
-    public mutating func resetProcesses() { perProcess.removeAll(); seen.removeAll() }
+    public mutating func resetProcesses() { perProcess.removeAll(); perProcessWake.removeAll(); seen.removeAll() }
     public mutating func reset() { self = CPUSmoother() }
 }

@@ -14,7 +14,7 @@ final class PanelController {
     private var panel: GlassPanel?
     private var model: PanelModel?
     private var clickMonitor: Any?
-    static let size = NSSize(width: 340, height: 620)
+    static let size = NSSize(width: 340, height: 680)
 
     init(appState: AppState) { self.appState = appState }
 

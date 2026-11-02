@@ -14,6 +14,9 @@ public final class Sampler {
     private let cpu = CPUSampler()
     private let processes = ProcessSampler()
     private var smoother = CPUSmoother()
+    private let networkSampler = NetworkSampler()
+    private var lastBattery: (reading: BatteryReading?, time: Date)?
+    private var lastBlockers: (blocks: [Int32: SleepBlock], time: Date)?
     private var load = LoadEvaluator()
     private var lastSwap: (bytes: UInt64, time: Date)?
     private var lastStorage: (reading: StorageReading, time: Date)?
@@ -54,7 +57,10 @@ public final class Sampler {
             guard newMode != mode else { return }
             mode = newMode
             multiplier = 1
-            if newMode == .closed { processes.reset(); smoother.resetProcesses(); primedProcesses = false }
+            if newMode == .closed {
+                processes.reset(); smoother.resetProcesses(); networkSampler.reset(); primedProcesses = false
+                lastBattery = nil; lastBlockers = nil
+            }
             if running { scheduleTimer(); tick() }
         }
     }
@@ -78,7 +84,7 @@ public final class Sampler {
             self?.queue.async {
                 guard let self, self.running else { return }
                 // Counters are meaningless across sleep: drop all deltas and start clean.
-                self.cpu.reset(); self.processes.reset(); self.smoother.reset(); self.primedProcesses = false; self.lastSwap = nil
+                self.cpu.reset(); self.processes.reset(); self.smoother.reset(); self.networkSampler.reset(); self.primedProcesses = false; self.lastSwap = nil
                 self.scheduleTimer(); self.tick()
             }
         }
@@ -137,6 +143,21 @@ public final class Sampler {
             }
         }
 
+        var network: NetworkReading?
+        var battery: BatteryReading?
+        var blockers: [Int32: SleepBlock] = [:]
+        if open {
+            network = networkSampler.sample(at: started)
+            if lastBattery == nil || started.timeIntervalSince(lastBattery!.time) >= 5 {
+                lastBattery = (BatterySampler.read(), started)
+            }
+            battery = lastBattery?.reading
+            if lastBlockers == nil || started.timeIntervalSince(lastBlockers!.time) >= 3 {
+                lastBlockers = (SleepBlockers.read(), started)
+            }
+            blockers = lastBlockers?.blocks ?? [:]
+        }
+
         let band = load.update(LoadInput(cpu: rawCPU?.total ?? 0,
                                          pressure: memory?.pressure ?? .normal,
                                          swapGrowthBytesPerSec: swapGrowth,
@@ -144,7 +165,8 @@ public final class Sampler {
 
         let snap = Snapshot(date: started, cpu: cpuReading, memory: memory, storage: storage, thermal: thermal,
                             groups: groups, unresponsivePIDs: unresponsive, swapGrowthBytesPerSec: swapGrowth,
-                            band: band, hasProcessData: hasProcessData)
+                            band: band, hasProcessData: hasProcessData,
+                            network: network, battery: battery, sleepBlockers: blockers)
         lock.lock(); _latest = snap; lock.unlock()
         onSnapshot(snap)
 

@@ -11,8 +11,12 @@ public struct Snapshot: Sendable {
     public var swapGrowthBytesPerSec: Double
     public var band: LoadBand
     public var hasProcessData: Bool           // false for the first open tick (no deltas yet)
+    public var network: NetworkReading?       // only while the panel is open
+    public var battery: BatteryReading?       // nil on Macs without a battery, and while the panel is closed
+    public var sleepBlockers: [Int32: SleepBlock]
 
     public static let empty = Snapshot(date: .distantPast, cpu: nil, memory: nil, storage: nil,
         thermal: ThermalReading(state: .nominal, sensors: [], cpuCelsius: nil, gpuCelsius: nil, hottestCelsius: nil, fans: []),
-        groups: [], unresponsivePIDs: [], swapGrowthBytesPerSec: 0, band: .calm, hasProcessData: false)
+        groups: [], unresponsivePIDs: [], swapGrowthBytesPerSec: 0, band: .calm, hasProcessData: false,
+        network: nil, battery: nil, sleepBlockers: [:])
 }

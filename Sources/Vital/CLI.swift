@@ -133,7 +133,7 @@ enum CLI {
             if CommandLine.arguments.contains("--expand-first"), let g = model.ranked.first { model.expanded.insert(g.id) }
             for _ in 0..<5 { RunLoop.main.run(until: Date().addingTimeInterval(0.2)) }
             let host = NSHostingView(rootView: PanelView(model: model).background(Color(white: 0.16)))
-            host.frame = NSRect(x: 0, y: 0, width: 340, height: 620)
+            host.frame = NSRect(x: 0, y: 0, width: 340, height: 680)
             host.layoutSubtreeIfNeeded()
             if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
                 host.cacheDisplay(in: host.bounds, to: rep)

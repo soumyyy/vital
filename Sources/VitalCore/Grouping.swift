@@ -50,6 +50,7 @@ public enum Grouping {
             g.footprintBytes = g.processes.reduce(0) { $0 + $1.footprintBytes }
             let watts = g.processes.compactMap(\.watts)
             g.watts = watts.isEmpty ? nil : watts.reduce(0, +)
+            g.wakeupsPerSec = g.processes.reduce(0) { $0 + $1.wakeupsPerSec }
             g.isProtected = g.processes.contains { Protection.isProtected(pid: $0.pid, name: $0.name, selfPid: selfPid) }
             g.processes.sort { $0.cpuCores > $1.cpuCores }
             return g

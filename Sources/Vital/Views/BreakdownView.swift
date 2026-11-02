@@ -52,6 +52,7 @@ struct GroupRow: View {
 
     private var isOpen: Bool { model.expanded.contains(group.id) }
     private var hung: Bool { model.isUnresponsive(group) }
+    private var keepsAwake: Bool { group.processes.contains { model.snapshot.sleepBlockers[$0.pid] != nil } }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -64,7 +65,7 @@ struct GroupRow: View {
                     }
                     VStack(alignment: .leading, spacing: 1) {
                         Text(group.name).font(.system(size: 12, weight: .medium)).lineLimit(1)
-                        Text(subtitle).font(.system(size: 10)).foregroundStyle(hung ? Palette.red : .secondary)
+                        Text(subtitle).font(.system(size: 10)).foregroundStyle(hung ? Palette.red : (keepsAwake ? Palette.orange : .secondary))
                     }
                     Spacer(minLength: 4)
                     VStack(alignment: .trailing, spacing: 1) {
@@ -93,7 +94,8 @@ struct GroupRow: View {
         if group.isAggregate { return "Approximate · macOS hides these from apps" }
         if group.isProtected { return "System process · protected" }
         let n = group.processes.count
-        return n == 1 ? "1 process" : "\(n) processes"
+        let base = n == 1 ? "1 process" : "\(n) processes"
+        return keepsAwake ? base + " · keeping Mac awake" : base
     }
 
     private var value: String {
@@ -108,7 +110,11 @@ struct GroupRow: View {
 
     /// Second line: the same load as Activity Monitor would show it (100% = one core).
     private var valueDetail: String? {
-        model.tab == .cpu ? Format.ofOneCore(group.cpuCores) : nil
+        switch model.tab {
+        case .cpu: return Format.ofOneCore(group.cpuCores)
+        case .heat: return group.wakeupsPerSec >= 1 ? "\(Int(group.wakeupsPerSec.rounded())) wake-ups/s" : nil
+        default: return nil
+        }
     }
 
     private var expanded: some View {

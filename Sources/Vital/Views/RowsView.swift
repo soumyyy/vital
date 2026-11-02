@@ -10,6 +10,7 @@ struct RowsView: View {
             memoryRow
             storageRow
             thermalRow
+            powerNetworkRow
         }
     }
 
@@ -116,6 +117,90 @@ struct RowsView: View {
         }
     }
 
+    // MARK: battery and network
+
+    private var powerNetworkRow: some View {
+        tappable(.heat) {
+            let snap = model.snapshot
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 12) {
+                    if let b = snap.battery {
+                        batteryColumn(b)
+                        Divider().opacity(0.5)
+                    }
+                    networkColumn(snap.network)
+                }
+                let names = awakeNames
+                if !names.isEmpty {
+                    Label("Keeping your Mac awake: \(names.joined(separator: ", "))", systemImage: "moon.zzz.fill")
+                        .font(.system(size: 11)).foregroundStyle(Palette.orange)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func batteryColumn(_ b: BatteryReading) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Battery").font(.system(size: 12, weight: .semibold))
+            HStack(spacing: 4) {
+                Text("\(b.percent)%").font(.system(size: 18, weight: .semibold)).monospacedDigit()
+                    .foregroundStyle(batteryColor(b))
+                if b.isCharging { Image(systemName: "bolt.fill").font(.system(size: 11)).foregroundStyle(Palette.green) }
+            }
+            ForEach(batteryDetail(b), id: \.self) { line in
+                Text(line).font(.system(size: 11)).foregroundStyle(.secondary).monospacedDigit()
+            }
+            if let h = b.healthFraction {
+                Text("Health \(Format.percent(h))" + (b.cycleCount.map { " · \($0) cycles" } ?? ""))
+                    .font(.system(size: 10)).foregroundStyle(.tertiary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func networkColumn(_ n: NetworkReading?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Network").font(.system(size: 12, weight: .semibold))
+            if let n {
+                Label(Format.rate(n.downBytesPerSec), systemImage: "arrow.down").foregroundStyle(.primary)
+                Label(Format.rate(n.upBytesPerSec), systemImage: "arrow.up").foregroundStyle(.secondary)
+            } else {
+                Text("Loading…").foregroundStyle(.secondary)
+            }
+        }
+        .font(.system(size: 12)).monospacedDigit()
+        .labelStyle(NetworkLabelStyle())
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func batteryDetail(_ b: BatteryReading) -> [String] {
+        var first = b.isCharging ? "Charging" : (b.onPower ? "Plugged in" : "On battery")
+        if let w = b.watts, !b.onPower || b.isCharging { first += String(format: " · %.1f W", w) }
+        var lines = [first]
+        if let m = b.minutesRemaining { lines.append(Format.duration(minutes: m) + (b.isCharging ? " to full" : " left")) }
+        return lines
+    }
+
+    private func batteryColor(_ b: BatteryReading) -> Color {
+        if b.isCharging || b.onPower { return .primary }
+        return b.percent <= 20 ? Palette.red : (b.percent <= 40 ? Palette.yellow : .primary)
+    }
+
+    /// Apps holding a "keep the Mac awake" assertion, by app name.
+    private var awakeNames: [String] {
+        let blockers = model.snapshot.sleepBlockers
+        guard !blockers.isEmpty else { return [] }
+        let pids = Set(blockers.keys)
+        var names = model.snapshot.groups.filter { g in g.processes.contains { pids.contains($0.pid) } }.map(\.name)
+        for block in blockers.values {
+            let n = block.appName ?? "a background task"
+            if !names.contains(n) { names.append(n) }
+        }
+        return Array(names.prefix(3))
+    }
+
     private func sensorSummary(_ t: ThermalReading) -> String {
         [t.cpuCelsius.map { "CPU \(Int($0.rounded()))°" }, t.gpuCelsius.map { "GPU \(Int($0.rounded()))°" }]
             .compactMap { $0 }.joined(separator: " · ")
@@ -135,5 +220,15 @@ struct RowsView: View {
     }
     private func stateWord(_ s: ThermalState) -> String {
         switch s { case .nominal: return "Normal"; case .fair: return "Warm"; case .serious: return "Hot"; case .critical: return "Critical" }
+    }
+}
+
+/// Small arrow icon with fixed width so the speeds line up.
+struct NetworkLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) {
+            configuration.icon.font(.system(size: 9, weight: .bold)).frame(width: 10)
+            configuration.title
+        }
     }
 }

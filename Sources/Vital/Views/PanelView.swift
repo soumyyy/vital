@@ -19,7 +19,7 @@ struct PanelView: View {
             else if let t = model.toast { ToastBar(text: t).padding(.bottom, 40) }
         }
         .padding(14)
-        .frame(width: 340, height: 620)
+        .frame(width: 340, height: 680)
         .panelBackground()
         .overlay(alignment: .bottom) { FloatingPill(model: model, storage: model.storage).padding(.bottom, 12) }
         .animation(.easeOut(duration: 0.15), value: model.pending?.id)

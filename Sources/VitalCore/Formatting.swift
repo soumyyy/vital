@@ -41,4 +41,17 @@ public enum Format {
     public static func coresInUse(_ cores: Double, of count: Int) -> String {
         String(format: "%.1f of %d cores", min(max(0, cores), Double(count)), count)
     }
+
+    /// Network speed, for example "1.2 MB/s".
+    public static func rate(_ bytesPerSec: Double) -> String {
+        let v = max(0, bytesPerSec)
+        if v < 1000 { return "\(Int(v.rounded())) B/s" }
+        return bytes(UInt64(v), base: .decimal) + "/s"
+    }
+
+    /// "1 h 10 min", "45 min"
+    public static func duration(minutes: Int) -> String {
+        let m = max(0, minutes)
+        return m >= 60 ? (m % 60 == 0 ? "\(m / 60) h" : "\(m / 60) h \(m % 60) min") : "\(m) min"
+    }
 }

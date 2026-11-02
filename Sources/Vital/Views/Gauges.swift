@@ -6,13 +6,18 @@ import VitalCore
 struct Sparkline: View {
     let values: [Double]
     var color: Color = Palette.blue
+    var filled = true
+    /// Graph a series that has fewer readings than `slots` right-aligned, so a short history does not stretch.
+    var slots: Int?
 
     var body: some View {
         GeometryReader { geo in
             let line = linePath(in: geo.size)
             ZStack {
-                fillPath(line, in: geo.size)
-                    .fill(LinearGradient(colors: [color.opacity(0.35), color.opacity(0.02)], startPoint: .top, endPoint: .bottom))
+                if filled {
+                    fillPath(line, in: geo.size)
+                        .fill(LinearGradient(colors: [color.opacity(0.35), color.opacity(0.02)], startPoint: .top, endPoint: .bottom))
+                }
                 line.stroke(color, style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
             }
         }
@@ -22,9 +27,11 @@ struct Sparkline: View {
     private func linePath(in size: CGSize) -> Path {
         var p = Path()
         guard values.count > 1 else { return p }
-        let step = size.width / CGFloat(values.count - 1)
+        let total = max(slots ?? values.count, values.count)
+        let step = size.width / CGFloat(total - 1)
+        let offset = CGFloat(total - values.count) * step
         for (i, v) in values.enumerated() {
-            let pt = CGPoint(x: CGFloat(i) * step, y: size.height - CGFloat(min(max(v, 0), 1)) * (size.height - 2) - 1)
+            let pt = CGPoint(x: offset + CGFloat(i) * step, y: size.height - CGFloat(min(max(v, 0), 1)) * (size.height - 2) - 1)
             i == 0 ? p.move(to: pt) : p.addLine(to: pt)
         }
         return p
@@ -33,8 +40,9 @@ struct Sparkline: View {
     private func fillPath(_ line: Path, in size: CGSize) -> Path {
         var p = line
         guard values.count > 1 else { return p }
+        let first = line.boundingRect.minX
         p.addLine(to: CGPoint(x: size.width, y: size.height))
-        p.addLine(to: CGPoint(x: 0, y: size.height))
+        p.addLine(to: CGPoint(x: first, y: size.height))
         p.closeSubpath()
         return p
     }

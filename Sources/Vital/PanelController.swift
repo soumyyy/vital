@@ -28,6 +28,7 @@ final class PanelController {
         let model = PanelModel(appState: appState)
         if let arg = CommandLine.arguments.first(where: { $0.hasPrefix("--tab=") }),
            let tab = PanelTab(argument: String(arg.dropFirst(6))) { model.tab = tab }   // for screenshots
+        if CommandLine.arguments.contains("--overview") { model.overview = true }
         self.model = model
         let visible = (button.window?.screen ?? NSScreen.main)?.visibleFrame.height ?? Self.size.height
         model.maxHeight = min(Self.size.height, visible - 16)

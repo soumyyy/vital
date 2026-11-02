@@ -78,3 +78,8 @@ Tests: 111 pass (12 new in HealthTests).
 Measured (same machine, same method, release builds, A/B against HEAD): panel open 34 MB to 27 MB, open CPU 1.9% to 1.3-1.5%, after close 30 MB to 25-26 MB, never opened 11-12 MB and about 0% (unchanged).
 
 Not verified: the live panel on screen (resize animation, top edge staying under the icon, Liquid Glass look, hover tooltips), macOS 14/15 frosted fallback, and a real hung app (staged with --mock).
+
+## Round 6: Overview page
+- Overview (grid button in the pill): six half-width cards with five-minute graphs (CPU, memory, disk read/write, network down/up, heat), storage as a bar, battery full width. Cards open the matching vital.
+- Histories are stored by time (`History`), so graphs stay correct when the cadence changes between open (2 s) and closed (5-15 s). Rates read zero when not measured.
+- Measured: overview open 24 MB, about 0.7% CPU.

@@ -3,7 +3,7 @@ import SwiftUI
 import VitalCore
 
 /// Renders the panel into a PNG without a display (layout check; glass is not drawn offscreen).
-/// Usage: Vital --render-panel out.png [--tab=Heat] [--expand-first] [--details] [--more]
+/// Usage: Vital --render-panel out.png [--tab=Heat] [--expand-first] [--details] [--more] [--overview]
 ///        [--appearance=light|dark] [--mock=calm|busy|struggling] [--wait=seconds] [--max-height=pt]
 /// `--mock` edits a live reading to stage a state for screenshots (render only, never in the app).
 enum PanelRender {
@@ -16,7 +16,7 @@ enum PanelRender {
         let state = AppState()
         state.start()
         state.sampler.setMode(.open)
-        spin(6)
+        spin(12)
         let model = PanelModel(appState: state)
         if let mock = value("mock") {
             state.onSnapshot = nil                       // freeze the staged reading
@@ -25,6 +25,21 @@ enum PanelRender {
         }
         if let t = value("tab"), let tab = PanelTab(argument: t) { model.tab = tab }
         if args.contains("--expand-first"), let g = model.ranked.first(where: { !$0.isAggregate }) { model.expanded.insert(g.id) }
+        if args.contains("--overview") { model.overview = true }
+        if args.contains("--demo-history") {                       // five minutes of invented readings, to judge the graphs
+            var h = Histories()
+            let now = Date()
+            for i in 0..<150 {
+                let t = now.addingTimeInterval(Double(i - 150) * 2), x = Double(i)
+                h.cpu.append(0.25 + 0.2 * sin(x / 9) + (i % 17 == 0 ? 0.25 : 0), at: t)
+                h.memory.append(0.6 + 0.05 * sin(x / 40) + x / 2000, at: t)
+                h.heat.append(40 + 6 * sin(x / 25), at: t)
+                h.down.append(max(0, 2_000_000 * sin(x / 7)), at: t); h.up.append(max(0, 200_000 * sin(x / 5)), at: t)
+                h.diskRead.append(max(0, 3_000_000 * sin(x / 11)), at: t); h.diskWrite.append(max(0, 1_000_000 * sin(x / 6)), at: t)
+            }
+            state.onSnapshot = nil
+            model.histories = h
+        }
         if args.contains("--details") { model.showDetails = true }
         if args.contains("--more") { model.showAll = true }
         if model.tab == .heat { model.fanController.refresh() }

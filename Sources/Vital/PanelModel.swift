@@ -54,6 +54,8 @@ final class PanelModel: ObservableObject {
     @Published var expanded: Set<String> = []
     @Published var showDetails = false
     @Published var showAll = false
+    @Published var overview = false
+    @Published var histories: Histories
     @Published var pending: PendingAction?
     @Published var toast: String?
 
@@ -69,12 +71,14 @@ final class PanelModel: ObservableObject {
         self.appState = appState
         self.snapshot = appState.latest
         self.history = appState.cpuHistory
+        self.histories = appState.histories
         // Open on the vital the headline is about. Not Storage: that would start a folder scan on every open.
         if let focus = Health.headline(appState.latest).focus, focus != .storage { tab = PanelTab(focus) }
         appState.onSnapshot = { [weak self] snap in
             guard let self else { return }
             self.snapshot = snap
             self.history = appState.cpuHistory
+            if self.overview { self.histories = appState.histories }       // only the Overview page graphs them
         }
     }
 
@@ -135,7 +139,13 @@ final class PanelModel: ObservableObject {
 
     // MARK: actions
 
+    func toggleOverview() {
+        overview.toggle()
+        if overview { histories = appState.histories }
+    }
+
     func select(_ t: PanelTab) {
+        overview = false
         guard t != tab else { return }
         tab = t
         showAll = false

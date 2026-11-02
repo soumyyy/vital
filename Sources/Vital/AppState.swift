@@ -9,6 +9,7 @@ final class AppState {
     let storage = StorageStore()          // storage breakdown cache: survives panel close
     private(set) var latest = Snapshot.empty
     private(set) var cpuHistory: [Double] = []
+    private(set) var histories = Histories()
     var onSnapshot: ((Snapshot) -> Void)?
     var onBandChange: ((LoadBand) -> Void)?
     private var band: LoadBand = .calm
@@ -24,6 +25,7 @@ final class AppState {
 
     private func receive(_ snap: Snapshot) {
         latest = snap
+        histories.record(snap)
         if let c = snap.cpu {
             cpuHistory.append(c.total)
             if cpuHistory.count > Self.historyLimit { cpuHistory.removeFirst(cpuHistory.count - Self.historyLimit) }

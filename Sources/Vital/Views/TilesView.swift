@@ -13,7 +13,7 @@ struct VitalTiles: View {
 
     private func tile(_ tab: PanelTab) -> some View {
         let r = reading(tab)
-        let selected = model.tab == tab
+        let selected = model.tab == tab && !model.overview
         return Button { model.select(tab) } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(tab.rawValue).font(Typo.small).foregroundStyle(selected ? .primary : .secondary)

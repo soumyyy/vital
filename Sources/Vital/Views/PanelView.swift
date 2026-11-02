@@ -16,10 +16,14 @@ struct PanelView: View {
             if !model.unresponsiveGroups.isEmpty { NotRespondingStrip(model: model) }
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 12) {
-                    if let status = model.status { StatusLine(model: model, status: status) }
-                    if model.tab == .heat { FanCard(model: model) }
-                    BreakdownView(model: model)
-                    DetailsSection(model: model)
+                    if model.overview {
+                        OverviewView(model: model)
+                    } else {
+                        if let status = model.status { StatusLine(model: model, status: status) }
+                        if model.tab == .heat { FanCard(model: model) }
+                        BreakdownView(model: model)
+                        DetailsSection(model: model)
+                    }
                 }
                 .background(GeometryReader { g in Color.clear.preference(key: PanelSizes.self, value: PanelSizes(content: g.size.height)) })
             }
@@ -153,6 +157,14 @@ struct FloatingPill: View {
             .buttonStyle(.plain).focusEffectDisabled()
             .help(model.tab == .storage ? "Refresh and rescan storage" : "Refresh now")
             .accessibilityLabel(model.tab == .storage ? "Refresh and rescan storage" : "Refresh now")
+
+            Button { model.toggleOverview() } label: {
+                Image(systemName: model.overview ? "square.grid.2x2.fill" : "square.grid.2x2").font(.system(size: 12, weight: .medium))
+                    .frame(width: 20, height: 20).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).focusEffectDisabled()
+            .help(model.overview ? "Back to apps" : "Overview of everything")
+            .accessibilityLabel(model.overview ? "Back to apps" : "Overview")
 
             Menu {
                 Toggle("Launch at login", isOn: Binding(get: { launchAtLogin }, set: { setLaunchAtLogin($0) }))

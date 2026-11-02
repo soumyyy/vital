@@ -4,15 +4,20 @@ cask "vital" do
 
   url "https://github.com/soumyyy/vital/releases/download/v#{version}/Vital.dmg"
   name "Vital"
-  desc "Menu bar monitor for CPU, memory, storage, and thermals"
+  desc "Menu bar monitor for CPU, memory, storage and thermals"
   homepage "https://github.com/soumyyy/vital"
 
-  auto_updates true
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
   depends_on arch: :arm64
   depends_on macos: :sonoma
 
   app "Vital.app"
 
+  # Remove the optional fan-control helper registration before the app is deleted.
   uninstall quit:       "dev.soumya.vital",
             signal:     [["TERM", "dev.soumya.vital"]],
             on_upgrade: :signal,

@@ -18,6 +18,13 @@ A lean menu bar monitor for Apple Silicon Macs. It answers one question: **what 
 
 Download **Vital.dmg** from the [latest release](https://github.com/soumyyy/vital/releases/latest), open it and drag Vital into Applications. The app is signed with a Developer ID and notarized by Apple.
 
+Or with Homebrew:
+
+```sh
+brew tap soumyyy/vital https://github.com/soumyyy/vital
+brew install --cask soumyyy/vital/vital
+```
+
 See [installation and removal](docs/INSTALL.md) for permissions and uninstalling.
 
 ## What it does

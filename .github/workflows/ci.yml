@@ -25,3 +25,14 @@ jobs:
           plutil -lint Resources/Info.plist Resources/*.plist
           bash -n Scripts/build-app.sh Scripts/release.sh
           git diff --check
+
+  cask:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Tap this repository
+        run: brew tap soumyyy/vital "$GITHUB_WORKSPACE"
+      - name: Style and audit the cask
+        run: |
+          brew style --cask soumyyy/vital/vital
+          brew audit --cask --online soumyyy/vital/vital

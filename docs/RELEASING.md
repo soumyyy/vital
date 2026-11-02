@@ -65,13 +65,21 @@ For local replacement of a registered development app, quit it and unregister it
 
 Running the release script does not publish files or change GitHub visibility. Published artifacts must not be silently replaced under the same version/tag.
 
-## Add Homebrew Cask
+## Homebrew
 
-1. Create an owner-maintained `homebrew-tap` repository after the public, notarized DMG is available.
-2. Add `Casks/vital.rb` with the exact version, DMG URL and SHA-256, application name, homepage, Apple Silicon/macOS requirements, and `Vital.app` artifact.
-3. Add and test helper unregistration during uninstall. Keep fan-control approval in the app; installation must not grant permission silently.
-4. Test cask installation, upgrade, removal, and audit checks.
-5. Document the actual command: `brew install --cask OWNER/tap/vital`.
-6. Update the cask's version, URL, and DMG checksum for each release. The DMG checksum is different from the updater ZIP checksum.
+The cask lives in this repository (`Casks/vital.rb`), so the repository is its own tap. Users add it by URL, because the repository is not named `homebrew-*`:
 
-Users can run `brew upgrade --cask OWNER/tap/vital` once the tap is live. Official Homebrew Cask submission comes later and remains subject to Homebrew acceptance requirements.
+```sh
+brew tap soumyyy/vital https://github.com/soumyyy/vital
+brew install --cask soumyyy/vital/vital
+```
+
+After publishing a release:
+
+```sh
+Scripts/update-cask.sh 0.1.4        # reads the DMG checksum from the release's SHA256SUMS
+brew audit --cask --online soumyyy/vital/vital
+git add Casks/vital.rb && git commit -m "Cask: 0.1.4" && git push
+```
+
+The cask checksum is for `Vital.dmg`; the updater uses the ZIP checksum, which is different. Uninstalling runs `Vital --unregister-fan-helper`, so removal also drops the optional fan-control helper. Installation never grants fan-control approval; that stays in the app. Official Homebrew Cask submission can come later and is subject to Homebrew's acceptance rules.

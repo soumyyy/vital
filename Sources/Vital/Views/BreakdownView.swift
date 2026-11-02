@@ -117,7 +117,12 @@ struct GroupRow: View {
                 HStack {
                     Text(p.name).lineLimit(1)
                     Spacer()
-                    Text(processValue(p)).monospacedDigit()
+                    if model.tab == .cpu {
+                        Text(Format.cpuShare(cores: p.cpuCores, coreCount: coreCount)).monospacedDigit()
+                            + Text("  \(Int((p.cpuCores * 100).rounded()))% of a core").foregroundStyle(.tertiary)
+                    } else {
+                        Text(processValue(p)).monospacedDigit()
+                    }
                 }
                 .font(.system(size: 11)).foregroundStyle(.secondary)
                 .padding(.leading, 30)

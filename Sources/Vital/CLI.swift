@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Foundation
 import VitalCore
 
@@ -9,6 +10,9 @@ enum CLI {
         if args.contains("--probe") { probe(); return true }
         if args.contains("--dump-sensors") { dumpSensors(); return true }
         if args.contains("--probe-storage") { probeStorage(); return true }
+        if let i = CommandLine.arguments.firstIndex(of: "--render-panel"), i + 1 < CommandLine.arguments.count {
+            renderPanel(to: CommandLine.arguments[i + 1]); return true
+        }
         if let i = CommandLine.arguments.firstIndex(of: "--dump-icons"), i + 1 < CommandLine.arguments.count {
             dumpIcons(to: CommandLine.arguments[i + 1]); return true
         }
@@ -110,6 +114,32 @@ enum CLI {
         print("used \(Format.bytes(cap.usedBytes, base: .decimal)), other \(Format.bytes(r.otherBytes(usedBytes: cap.usedBytes), base: .decimal)), partial=\(r.partial), full disk access=\(StorageSampler.hasFullDiskAccess().map { "\($0)" } ?? "unknown")")
         for c in r.categories.sorted(by: { $0.bytes > $1.bytes }).prefix(3) {
             print(c.name, c.top.prefix(3).map { "\(($0.path as NSString).lastPathComponent) \(Format.bytes($0.bytes, base: .decimal))" }.joined(separator: ", "))
+        }
+    }
+
+    /// Renders the panel from live data into a PNG without a display (layout check; glass is not drawn offscreen).
+    /// Usage: Vital --render-panel out.png [--tab=Heat] [--expand-first]
+    private static func renderPanel(to path: String) {
+        MainActor.assumeIsolated {
+            _ = NSApplication.shared
+            let state = AppState()
+            state.start()
+            state.sampler.setMode(.open)
+            let end = Date().addingTimeInterval(6)
+            while Date() < end { RunLoop.main.run(until: Date().addingTimeInterval(0.2)) }
+            let model = PanelModel(appState: state)
+            if let arg = CommandLine.arguments.first(where: { $0.hasPrefix("--tab=") }),
+               let tab = PanelTab(rawValue: String(arg.dropFirst(6))) { model.tab = tab }
+            if CommandLine.arguments.contains("--expand-first"), let g = model.ranked.first { model.expanded.insert(g.id) }
+            for _ in 0..<5 { RunLoop.main.run(until: Date().addingTimeInterval(0.2)) }
+            let host = NSHostingView(rootView: PanelView(model: model).background(Color(white: 0.16)))
+            host.frame = NSRect(x: 0, y: 0, width: 340, height: 620)
+            host.layoutSubtreeIfNeeded()
+            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                host.cacheDisplay(in: host.bounds, to: rep)
+                try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+                print("wrote \(path)")
+            }
         }
     }
 }

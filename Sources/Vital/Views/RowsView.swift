@@ -36,13 +36,13 @@ struct RowsView: View {
                     let cores = c.perCore.count
                     header("CPU", "\(cores) cores · \(Format.percent(c.total)) used")
                     Sparkline(values: model.history, color: Palette.level(c.total)).frame(height: 28)
-                    HStack {
+                    VStack(alignment: .leading, spacing: 2) {
                         Text("Using \(Format.coresInUse(c.total * Double(cores), of: cores))")
-                        Spacer()
                         if let p = c.performance, let e = c.efficiency {
-                            Text("Performance \(Format.percent(p)) · Efficiency \(Format.percent(e))")
+                            Text("Performance cores \(Format.percent(p)) · Efficiency cores \(Format.percent(e))")
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .font(.system(size: 11)).foregroundStyle(.secondary).monospacedDigit()
                 } else {
                     header("CPU", "Sampling…")

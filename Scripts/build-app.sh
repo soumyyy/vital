@@ -28,6 +28,9 @@ HELPER_HASH=$(codesign -dv --verbose=4 "$APP/Contents/MacOS/VitalFanHelper" 2>&1
 /usr/libexec/PlistBuddy -c "Add :EnvironmentVariables:VITAL_FAN_HELPER_BUILD string $HELPER_HASH" "$APP/Contents/Library/LaunchDaemons/dev.soumya.vital.fans.plist"
 
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+# VERSION and BUILD override the numbers in Info.plist (releases, update tests).
+[ -n "${VERSION:-}" ] && /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
+[ -n "${BUILD:-}" ] && /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" "$APP/Contents/Info.plist"
 [ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 codesign --force --sign "$SIGN_IDENTITY" "$APP"   # ad hoc unless SIGN_IDENTITY is set
 echo "Built $APP"

@@ -83,3 +83,9 @@ Not verified: the live panel on screen (resize animation, top edge staying under
 - Overview (grid button in the pill): six half-width cards with five-minute graphs (CPU, memory, disk read/write, network down/up, heat), storage as a bar, battery full width. Cards open the matching vital.
 - Histories are stored by time (`History`), so graphs stay correct when the cadence changes between open (2 s) and closed (5-15 s). Rates read zero when not measured.
 - Measured: overview open 24 MB, about 0.7% CPU.
+
+## Round 7: updates
+- About window (About Vital, Update Software…): version, one line about Vital, check, release notes, Update and Restart.
+- Core in VitalCore (`AppVersion`, `UpdateFeed.parse`, `UpdatePolicy`) with tests; install in `Updater.swift`: download, SHA-256, `ditto` unzip, Security.framework signature + same-Team-ID check, atomic swap with rollback, relaunch, fan helper unregistered before the swap and registered again on the next launch.
+- Verified end to end against a local server on a temp copy: 0.1.0 became 0.2.0, signature valid, app relaunched, no leftovers. A wrong checksum and a build from another signer were both refused and the old app stayed.
+- Not verified: against a real GitHub release (repo is private; the API returns 404 until it is public), the fan helper re-approval after an update, a read-only install folder in the UI.

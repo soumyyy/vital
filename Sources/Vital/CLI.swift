@@ -8,6 +8,7 @@ enum CLI {
     static func runIfRequested() -> Bool {
         let args = CommandLine.arguments.dropFirst()
         if FanCLI.runIfRequested(args) { return true }
+        if UpdateCLI.runIfRequested(args) { return true }
         if args.contains("--probe") { probe(); return true }
         if args.contains("--dump-sensors") { dumpSensors(); return true }
         if args.contains("--probe-storage") { probeStorage(); return true }

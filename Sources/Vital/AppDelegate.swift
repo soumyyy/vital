@@ -8,10 +8,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) { appState?.fanController.stop() }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        FanClient.completeUpdate()
         let state = AppState()
         appState = state
         statusController = StatusItemController(appState: state)
         state.start()
+        if CommandLine.arguments.contains("--show-about") {      // for screenshots
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { AboutPanel.show(checkNow: CommandLine.arguments.contains("--check")) }
+        }
         if CommandLine.arguments.contains("--open-panel") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in self?.statusController?.openPanel() }
             // Debug aid for measuring memory after the panel closes: --close-panel-after=<seconds>

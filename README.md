@@ -7,13 +7,14 @@ A lean menu bar monitor for Apple Silicon Macs. It answers one question: what is
 - **Breakdown per app**: Chrome plus its helpers is one entry, expandable to its processes (merged by name) with Quit and Force Quit. CPU is a share of the whole CPU, smoothed over 5 seconds; hover a process for the Activity Monitor figure (100% = one core).
 - **Details on demand**: each vital has a Details section, closed by default: performance and efficiency cores; memory pressure, swap and memory read back from disk; free space and which apps read and write the disk; temperatures, battery (charge, watts, time left, health, cycles), network speed and apps keeping the Mac awake. Idle wake-ups show in an expanded app on Heat.
 - **Overview**: the grid button in the pill shows CPU, memory, disk, network and heat graphs for the last five minutes, storage capacity and the battery.
+- **Updates**: three-dot menu → **Update Software…** (also in the right-click menu and the About window). Vital checks the latest GitHub release, shows what changed, downloads the zip, checks its SHA-256 and code signature (same developer as the running copy), replaces itself and restarts. It never checks on its own.
 - **Fans**: live speed and manual control at the top of Heat. Click **Turn on**, then approve Vital in System Settings → General → Login Items & Extensions. The bundled root helper clamps speeds to hardware limits and resets to Auto on disconnect, sleep, high thermal pressure, or a missed heartbeat. Manual mode is temporary and is not saved across launches. Direct `F0Md` fan control is supported; Macs that require `Ftst` unlocking or Intel `FS!` control show an error.
 - **Refresh** button for fresh readings, and a rescan when Storage is selected (about 40 s for a full scan on an SSD with 450 GB used).
 - **Quit and Force Quit** with confirmation, protected system processes, and truthful results (including processes stuck in the kernel).
 - The panel is as tall as its content (up to 680 pt), so a calm Mac gets a short panel.
 - Liquid Glass panel on macOS 26+, frosted material on macOS 14 and 15, opaque with Reduce Transparency.
 
-macOS 14+, Apple Silicon (M1 and later). No network access, no telemetry.
+macOS 14+, Apple Silicon (M1 and later). No telemetry. Vital touches the network only when you press **Update Software**, and then it makes one request to the GitHub Releases API.
 
 ## Build
 
@@ -80,3 +81,12 @@ The 26 MB after closing is the floor for SwiftUI in this process: an empty panel
 Sensor approach informed by [Stats](https://github.com/exelban/Stats) and [macmon](https://github.com/vladkens/macmon) (both MIT).
 
 License: MIT.
+
+## Publishing an update
+
+1. Build the release: `VERSION=0.2.0 BUILD=3 SIGN_IDENTITY="..." Scripts/release.sh`. It writes `build/Vital-0.2.0.zip` and `build/Vital.dmg`, and prints the zip's checksum and the `gh release create` command.
+2. The release tag must be `v0.2.0`; attach `Vital-0.2.0.zip` (the in-app updater downloads a `Vital*.zip` asset). Put a line `sha256: <hex>` in the notes if GitHub does not show a digest for the asset.
+3. The repository must be public for the updater to see releases. Updates install only if the new app is signed by the same developer as the running one. An ad hoc build accepts an update only with a checksum.
+4. After an update Vital re-registers the fan helper; macOS may ask for approval again.
+
+Test an update without publishing: serve a `latest.json` and zip from `http://127.0.0.1`, then run `Vital --probe-update --install --update-feed=<url> --update-target=<copy of Vital.app>`.

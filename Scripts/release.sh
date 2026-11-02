@@ -29,3 +29,13 @@ if [ -n "${SIGN_IDENTITY:-}" ] && [ -n "${NOTARY_PROFILE:-}" ]; then
   xcrun stapler staple build/Vital.dmg
 fi
 echo "Built build/Vital.dmg"
+
+# The in-app updater downloads this zip. Its checksum goes in the release notes as a line "sha256: <hex>".
+VERSION="${VERSION:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)}"
+rm -f "build/Vital-$VERSION.zip"
+ditto -c -k --keepParent build/Vital.app "build/Vital-$VERSION.zip"
+SUM=$(shasum -a 256 "build/Vital-$VERSION.zip" | cut -d' ' -f1)
+echo "Built build/Vital-$VERSION.zip"
+echo "sha256: $SUM"
+echo
+echo "Publish:  gh release create v$VERSION build/Vital-$VERSION.zip build/Vital.dmg --title \"Vital $VERSION\" --notes \"What changed.\n\nsha256: $SUM\""

@@ -36,6 +36,27 @@ final class FanClient: ObservableObject {
         return .unavailable(reason: reason)
     }
 
+    // MARK: updating Vital
+
+    private static let reenableKey = "vital.fan.reenableAfterUpdate"
+
+    /// The helper is registered against this bundle's signature. Remove it before the bundle is replaced and
+    /// remember to register it again from the new version.
+    static func prepareForUpdate() async {
+        let service = SMAppService.daemon(plistName: FanService.plist)
+        guard service.status == .enabled || service.status == .requiresApproval else { return }
+        try? await service.unregister()
+        UserDefaults.standard.set(true, forKey: reenableKey)
+    }
+
+    /// First launch after an update: put the helper back so fan control keeps working.
+    static func completeUpdate() {
+        guard UserDefaults.standard.bool(forKey: reenableKey) else { return }
+        UserDefaults.standard.removeObject(forKey: reenableKey)
+        let service = SMAppService.daemon(plistName: FanService.plist)
+        try? service.register()
+    }
+
     var needsApproval: Bool { service.status == .requiresApproval }
 
     var setupTitle: String {

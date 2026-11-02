@@ -175,6 +175,7 @@ struct FloatingPill: View {
                 Toggle("Launch at login", isOn: Binding(get: { launchAtLogin }, set: { setLaunchAtLogin($0) }))
                 Divider()
                 Button("About Vital") { AboutPanel.show() }
+                Button("Update Software…") { AboutPanel.show(checkNow: true) }
                 Button("Quit Vital") { NSApp.terminate(nil) }
             } label: {
                 Image(systemName: "ellipsis").font(.system(size: 12, weight: .medium)).frame(width: 20, height: 20)

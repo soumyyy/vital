@@ -15,3 +15,5 @@
 - Fan control stops working after an ad hoc rebuild: the root helper is pinned to the app's signature, so `Scripts/build-app.sh` must sign with the Apple Development identity (it now picks one automatically) and `Vital --refresh-fan-helper` re-registers after a signature change. Check `Vital --probe-fan-control` after any rebuild that touches signing.
 - The app list was slow to appear because process rates need two readings. Take the first one when the pointer reaches the menu bar icon (`Sampler.prime()`), and the second 0.3 s after opening, not a full interval later. Measured: 2 s before, 166 ms primed, about 600 ms cold.
 - Dark-mode `--render-panel` images still draw primary text dark; judge dark mode from the light renders and colours, not the text contrast.
+- The updater must never run by itself (README promises no network use): checks start only from the About window or the Update Software menu item.
+- `NSApp.terminate` can exit before a `defer` runs; delete the update work folder before relaunching.

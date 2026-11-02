@@ -24,6 +24,7 @@ public final class Sampler {
     private var lastPageIns: (count: UInt64, time: Date)?
     private var lastStorage: (reading: StorageReading, time: Date)?
     private var primedProcesses = false
+    private var primedAt: Date?
     private var observers: [NSObjectProtocol] = []
 
     private let lock = NSLock()
@@ -55,16 +56,43 @@ public final class Sampler {
     /// Takes a fresh sample right now (the panel's refresh button). Skipped if a tick is already running.
     public func refreshNow() { queue.async { [self] in if running { tick() } } }
 
+    /// Takes the first process reading before the panel opens (the pointer is over the menu bar icon), so the
+    /// app list has the deltas it needs the moment the panel appears. No snapshot is published.
+    public func prime() {
+        queue.async { [self] in
+            guard running, mode == .closed, !gate.isRunning else { return }
+            let now = Date()
+            if let at = primedAt, now.timeIntervalSince(at) < SamplerPolicy.primeFreshFor { return }
+            primeProcesses(at: now)
+        }
+    }
+
+    private func primeProcesses(at date: Date) {
+        processes.reset(); smoother.resetProcesses()
+        var sample = processes.sample()
+        sample.rows = smoother.smooth(rows: sample.rows, at: date)
+        primedProcesses = true
+        primedAt = date
+    }
+
     public func setMode(_ newMode: SamplerMode) {
         queue.async { [self] in
             guard newMode != mode else { return }
             mode = newMode
             multiplier = 1
             if newMode == .closed {
-                processes.reset(); smoother.resetProcesses(); networkSampler.reset(); primedProcesses = false
+                processes.reset(); smoother.resetProcesses(); networkSampler.reset(); primedProcesses = false; primedAt = nil
                 lastBattery = nil; lastBlockers = nil; lastUnresponsive = nil
+            } else if let at = primedAt, Date().timeIntervalSince(at) > SamplerPolicy.primeFreshFor {
+                processes.reset(); smoother.resetProcesses(); primedProcesses = false; primedAt = nil   // too old to give a fair rate
             }
-            if running { scheduleTimer(); tick() }
+            if running {
+                scheduleTimer(); tick()
+                // Nothing to diff against yet: take the second reading half a second later instead of after a full interval.
+                if newMode == .open, !latest.hasProcessData {
+                    queue.asyncAfter(deadline: .now() + SamplerPolicy.firstDeltaDelay) { [self] in if running, mode == .open { tick() } }
+                }
+            }
         }
     }
 
@@ -145,6 +173,7 @@ public final class Sampler {
             sample.rows = smoother.smooth(rows: sample.rows, at: started)
             hasProcessData = primedProcesses
             primedProcesses = true
+            primedAt = nil
             if hasProcessData {
                 let sysCores = cpuReading.map { $0.total * Double($0.perCore.count) }
                 groups = Grouping.group(sample.rows, systemCPUCores: sysCores, memoryUsedBytes: memory?.usedBytes)

@@ -186,7 +186,6 @@ private struct HeatDetails: View {
                 }
             }
             .card()
-            FanCard(model: model)
         }
     }
 

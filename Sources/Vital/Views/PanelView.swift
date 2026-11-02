@@ -11,11 +11,13 @@ struct PanelView: View {
     private var scrollHeight: CGFloat { min(contentHeight, max(120, model.maxHeight - chrome)) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HeadlineView(model: model)
+        VStack(alignment: .leading, spacing: 12) {
             VitalTiles(model: model)
+            if !model.unresponsiveGroups.isEmpty { NotRespondingStrip(model: model) }
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 12) {
+                    if let status = model.status { StatusLine(model: model, status: status) }
+                    if model.tab == .heat { FanCard(model: model) }
                     BreakdownView(model: model)
                     DetailsSection(model: model)
                 }
@@ -25,7 +27,7 @@ struct PanelView: View {
             .background(GeometryReader { g in Color.clear.preference(key: PanelSizes.self, value: PanelSizes(scroll: g.size.height)) })
             if let p = model.pending { ConfirmBar(model: model, pending: p) }
             else if let t = model.toast { ToastBar(text: t) }
-            FloatingPill(model: model, storage: model.storage).frame(maxWidth: .infinity)
+            FloatingPill(model: model, storage: model.storage).frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(.horizontal, 14).padding(.top, 16).padding(.bottom, 12)
         .frame(width: 340)
@@ -51,54 +53,54 @@ struct PanelSizes: PreferenceKey, Equatable {
     }
 }
 
-/// One sentence about the whole Mac. When something is wrong it names the app and offers to quit it;
-/// when apps hang it turns into the tinted "struggling" strip with Force Quit.
-struct HeadlineView: View {
+/// What is wrong with the selected vital, with the one app that would fix it. Appears only when something is.
+struct StatusLine: View {
     @ObservedObject var model: PanelModel
+    let status: Headline
 
     var body: some View {
-        let h = model.headline
-        let hung = model.unresponsiveGroups
-        let culprit = h.culpritID.flatMap(model.group(id:))
-        let alarming = h.level == .critical
-        VStack(alignment: .leading, spacing: 10) {
+        let culprit = status.culpritID.flatMap(model.group(id:))
+        let color = Palette.color(status.level)
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Image(systemName: symbol(h.level))
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Palette.color(h.level))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(h.title).font(Typo.large).fixedSize(horizontal: false, vertical: true)
-                    if let d = h.detail {
-                        Text(d).font(Typo.medium).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Image(systemName: status.level == .critical ? "exclamationmark.triangle.fill" : "exclamationmark.circle.fill")
+                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(color).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(status.title).font(Typo.mediumBold)
+                    if let d = status.detail {
+                        Text(d).font(Typo.small).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                Spacer(minLength: 0)
             }
-            if !hung.isEmpty {
-                Button(hung.count == 1 ? "Force Quit \(hung[0].name)" : "Force Quit \(hung.count) not responding") {
-                    model.request(.quitAllUnresponsive, hung)
-                }
-                .buttonStyle(PillButton(destructive: true)).padding(.leading, 25)
-            } else if let g = culprit, h.level > .good {
+            if let g = culprit {
                 Button("Quit \(g.name)…") { model.request(.quit, [g]) }
-                    .buttonStyle(PillButton()).padding(.leading, 25)
+                    .buttonStyle(PillButton()).lineLimit(1).padding(.leading, 21)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(alarming ? 12 : 0)
-        .padding(.horizontal, alarming ? 0 : 4)
-        .background {
-            if alarming { RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Palette.red.opacity(0.14)) }
-        }
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(color.opacity(0.13)))
         .accessibilityElement(children: .contain)
     }
+}
 
-    private func symbol(_ l: HealthLevel) -> String {
-        switch l {
-        case .good: return "checkmark.circle.fill"
-        case .warning: return "exclamationmark.circle.fill"
-        case .critical: return "exclamationmark.triangle.fill"
+/// Apps that have stopped responding. This is the one thing that interrupts whatever tab is open.
+struct NotRespondingStrip: View {
+    @ObservedObject var model: PanelModel
+    var body: some View {
+        let hung = model.unresponsiveGroups
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Palette.red).accessibilityHidden(true)
+            Text(hung.count == 1 ? "\(hung[0].name) is not responding" : "\(hung.count) apps are not responding")
+                .font(Typo.mediumBold).lineLimit(1)
+            Spacer(minLength: 4)
+            Button("Force Quit") { model.request(.quitAllUnresponsive, hung) }.buttonStyle(PillButton(destructive: true))
         }
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Palette.red.opacity(0.14)))
+        .accessibilityElement(children: .contain)
     }
 }
 

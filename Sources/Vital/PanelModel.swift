@@ -6,6 +6,9 @@ import VitalCore
 enum PanelTab: String, CaseIterable, Identifiable {
     case cpu = "CPU", memory = "Memory", storage = "Storage", heat = "Heat"
     var id: String { rawValue }
+    var kind: VitalKind {
+        switch self { case .cpu: return .cpu; case .memory: return .memory; case .storage: return .storage; case .heat: return .heat }
+    }
     var metric: RankMetric {
         switch self {
         case .memory: return .memory
@@ -78,12 +81,16 @@ final class PanelModel: ObservableObject {
     func close() {
         appState.onSnapshot = nil
         storage.cancel()                     // scans run only while the panel is open
+        fanController.panelClosed()
         toastTask?.cancel()
     }
 
     // MARK: derived
 
     var headline: Headline { Health.headline(snapshot) }
+
+    /// What is wrong with the selected vital, shown at the top of its own view. Nil when it is fine.
+    var status: Headline? { Health.status(tab.kind, snapshot) }
 
     var ranked: [AppGroup] { Ranking.sorted(snapshot.groups, by: tab.metric) }
 

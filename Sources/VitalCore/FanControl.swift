@@ -1,35 +1,8 @@
 import Foundation
 
-public enum FanMode: Equatable, Sendable {
-    case auto
-    case manual(rpm: Double)
-}
-
 public enum FanControlAvailability: Equatable, Sendable {
     case available
     case unavailable(reason: String)
-}
-
-public enum FanControlError: Error, Equatable, Sendable {
-    case notAvailable
-    case invalidTarget
-}
-
-/// Seam for changing fan speed. Reading fans needs no privileges and lives in ThermalSampler; writing
-/// does (macOS answers kIOReturnNotPrivileged to an unprivileged SMC write). VitalFanHelper
-/// provides the writer; FanClient manages its approved XPC connection.
-public protocol FanController: Sendable {
-    var availability: FanControlAvailability { get }
-    func setMode(fan: Int, mode: FanMode) async throws
-}
-
-/// Fallback for contexts without a privileged helper. Never pretends to change anything.
-public struct NoopFanController: FanController {
-    public init() {}
-    public var availability: FanControlAvailability {
-        .unavailable(reason: "Changing fan speed needs an administrator helper, which is not installed. macOS manages the fans automatically.")
-    }
-    public func setMode(fan: Int, mode: FanMode) async throws { throw FanControlError.notAvailable }
 }
 
 public enum FanSafety {

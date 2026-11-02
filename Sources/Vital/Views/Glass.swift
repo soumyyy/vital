@@ -40,7 +40,19 @@ enum Typo {
     static let smallBold = Font.system(size: 11, weight: .semibold)
 }
 
+/// Soft highlight under the pointer, so rows read as tappable.
+struct HoverRow: ViewModifier {
+    @State private var hovering = false
+    func body(content: Content) -> some View {
+        content
+            .background(RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(Color.primary.opacity(hovering ? 0.06 : 0)).padding(.horizontal, -6))
+            .onHover { hovering = $0 }
+    }
+}
+
 extension View {
+    func hoverRow() -> some View { modifier(HoverRow()) }
     func panelBackground() -> some View { modifier(PanelBackground()) }
     func card(radius: CGFloat = 14) -> some View { modifier(CardStyle(radius: radius)) }
 }

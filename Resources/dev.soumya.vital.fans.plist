@@ -3,6 +3,8 @@
 <plist version="1.0"><dict>
 <key>Label</key><string>dev.soumya.vital.fans</string>
 <key>BundleProgram</key><string>Contents/MacOS/VitalFanHelper</string>
+<key>ProgramArguments</key><array><string>VitalFanHelper</string></array>
+<key>ExitTimeOut</key><integer>15</integer>
 <key>MachServices</key><dict><key>dev.soumya.vital.fans</key><true/></dict>
 <key>AssociatedBundleIdentifiers</key><array><string>dev.soumya.vital</string></array>
 </dict></plist>

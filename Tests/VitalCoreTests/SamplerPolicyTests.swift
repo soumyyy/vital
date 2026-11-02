@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import VitalCore
 
@@ -34,4 +35,29 @@ import Testing
     g.end()
     let afterEnd = g.begin()
     #expect(afterEnd)
+}
+
+/// Seconds from opening the panel until the app list has data.
+private func secondsUntilAppsAppear(primedFirst: Bool) -> Double {
+    let sampler = Sampler { _ in }
+    sampler.start()
+    Thread.sleep(forTimeInterval: 0.6)
+    if primedFirst { sampler.prime(); Thread.sleep(forTimeInterval: 0.6) }
+    let opened = Date()
+    sampler.setMode(.open)
+    while !sampler.latest.hasProcessData && Date().timeIntervalSince(opened) < 5 { Thread.sleep(forTimeInterval: 0.02) }
+    let t = Date().timeIntervalSince(opened)
+    print("apps after open (primed: \(primedFirst)): \(Int(t * 1000)) ms")
+    sampler.stop()
+    return t
+}
+
+@Test func appListAppearsWithinAFewHundredMillisecondsOfOpening() {
+    let cold = secondsUntilAppsAppear(primedFirst: false)
+    #expect(cold < 1.2, "cold open took \(cold) s")        // was a full 2 s interval
+}
+
+@Test func appListIsReadyImmediatelyAfterAHover() {
+    let warm = secondsUntilAppsAppear(primedFirst: true)
+    #expect(warm < 0.4, "primed open took \(warm) s")
 }

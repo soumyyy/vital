@@ -1,4 +1,5 @@
 import Foundation
+import MachO
 import IOKit.pwr_mgt
 import CVitalSensors
 import VitalCore
@@ -56,7 +57,13 @@ final class Endpoint: NSObject, FanServiceProtocol {
 }
 
 // The helper is embedded beside Vital, so both peers can pin the exact bundled code signature.
-let sibling = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent().appendingPathComponent("Vital")
+// launchd can supply a relative argv[0]; resolve the running image, not its argument string.
+var executableSize: UInt32 = 0
+_NSGetExecutablePath(nil, &executableSize)
+var executableBytes = [CChar](repeating: 0, count: Int(executableSize))
+guard _NSGetExecutablePath(&executableBytes, &executableSize) == 0 else { exit(1) }
+let sibling = URL(fileURLWithPath: String(cString: executableBytes)).resolvingSymlinksInPath()
+    .deletingLastPathComponent().appendingPathComponent("Vital")
 guard geteuid() == 0, let requirement = FanService.requirement(for: sibling) else { exit(1) }
 let helper = Helper(requirement: requirement)
 let listener = NSXPCListener(machServiceName: FanService.name)

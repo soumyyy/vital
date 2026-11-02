@@ -101,4 +101,48 @@ public enum Health {
         }
         return make(.good, "Your Mac is running fine", nil, nil)
     }
+
+    /// What is wrong with one vital, for the line shown at the top of that vital's own view. Nil when it is fine.
+    public static func status(_ kind: VitalKind, _ s: Snapshot) -> Headline? {
+        guard s.date != .distantPast else { return nil }
+        let apps = s.groups.filter { !$0.isAggregate }
+        func top(_ metric: RankMetric) -> AppGroup? { Ranking.sorted(apps, by: metric).first }
+        func quittable(_ g: AppGroup?) -> String? { g.flatMap { $0.isProtected ? nil : $0.id } }
+        func make(_ level: HealthLevel, _ title: String, _ detail: String?, culprit: AppGroup? = nil) -> Headline {
+            Headline(level: level, title: title, detail: detail, focus: kind, culpritID: quittable(culprit), hungIDs: [])
+        }
+        switch kind {
+        case .cpu:
+            let total = s.cpu?.total ?? 0
+            guard total >= LoadEvaluator.cpuBusyThreshold else { return nil }
+            let app = top(.cpu).flatMap { $0.cpuCores >= 0.5 ? $0 : nil }
+            let level = health(forCPU: total)
+            if let app { return make(level, level == .critical ? "\(app.name) is slowing your Mac" : "Your Mac is busy", "It is using the most CPU.", culprit: app) }
+            return make(level, level == .critical ? "Your Mac is struggling" : "Your Mac is busy", "macOS itself is doing most of the work.")
+        case .memory:
+            let pressure = s.memory?.pressure ?? .normal
+            let thrashing = isThrashing(pageInBytesPerSec: s.pageInBytesPerSec, swapUsedBytes: s.memory?.swapUsedBytes ?? 0)
+            guard pressure != .normal || thrashing else { return nil }
+            let app = top(.memory)
+            if pressure == .critical {
+                return make(.critical, "Memory is full", app.map { "Quitting \($0.name) would free the most." }
+                            ?? "The Mac is using the disk as memory, which is slow.", culprit: app)
+            }
+            return make(.warning, "Memory is getting full", app.map { "\($0.name) is using the most." }, culprit: app)
+        case .storage:
+            guard let st = s.storage else { return nil }
+            let level = storage(usedFraction: st.usedFraction)
+            guard level > .good else { return nil }
+            return make(level, level == .critical ? "Storage is full" : "Storage is almost full",
+                        "Free up space to keep your Mac running well.")
+        case .heat:
+            let level = heat(s.thermal.state)
+            guard level > .good else { return nil }
+            let app = top(.power).flatMap { ($0.watts ?? 0) >= 1 ? $0 : nil }
+            if level == .critical { return make(.critical, "Your Mac is hot", "It is slowing itself down to cool off.", culprit: app) }
+            return make(.warning, "Your Mac is warm", app.map { "\($0.name) is using the most power." }, culprit: app)
+        }
+    }
+
+    private static func health(forCPU total: Double) -> HealthLevel { cpu(total) }
 }

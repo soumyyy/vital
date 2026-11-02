@@ -102,3 +102,25 @@ private func snap(cpu: Double = 0.1, pressure: MemoryPressure = .normal, thermal
     #expect(Health.cpu(0.9) == .critical)
     #expect(Health.memory(.elevated) == .warning)
 }
+
+@Test func vitalStatusIsNilWhenFine() {
+    let s = snap(groups: [app("Safari", pid: 10, cpu: 0.2)])
+    for kind in VitalKind.allCases { #expect(Health.status(kind, s) == nil) }
+}
+
+@Test func vitalStatusReportsEachVitalOnItsOwn() {
+    let s = snap(cpu: 0.2, pressure: .elevated, thermal: .fair, storageUsed: 0.93,
+                 groups: [app("Dia", pid: 10, cpu: 0.2, mem: 4 << 30, watts: 2)])
+    #expect(Health.status(.cpu, s) == nil)
+    #expect(Health.status(.memory, s)?.title == "Memory is getting full")
+    #expect(Health.status(.memory, s)?.culpritID == "app:Dia")
+    #expect(Health.status(.storage, s)?.title == "Storage is almost full")
+    #expect(Health.status(.storage, s)?.culpritID == nil)
+    #expect(Health.status(.heat, s)?.title == "Your Mac is warm")
+}
+
+@Test func vitalStatusNeverOffersToQuitProtectedApps() {
+    let s = snap(cpu: 0.95, band: .struggling, groups: [app("WindowServer", pid: 30, cpu: 4, protected: true)])
+    #expect(Health.status(.cpu, s)?.culpritID == nil)
+    #expect(Health.status(.cpu, .empty) == nil)
+}

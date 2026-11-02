@@ -11,6 +11,10 @@ public enum SamplerPolicy {
     /// How often the (comparatively costly) "not responding" check runs while the panel is open.
     public static let unresponsiveCheckInterval: TimeInterval = 6
     public static let maxBackoff: Double = 4
+    /// A process reading taken on pointer hover stays usable for this long; older, it would average too long a span.
+    public static let primeFreshFor: TimeInterval = 8
+    /// With nothing primed, the second process reading comes this soon after opening.
+    public static let firstDeltaDelay: TimeInterval = 0.3
 
     public static func baseInterval(_ mode: SamplerMode, band: LoadBand = .calm) -> TimeInterval {
         if mode == .open { return openInterval }
@@ -30,6 +34,7 @@ public enum SamplerPolicy {
 /// Lets a tick start only if the previous one has finished. Overlapping ticks are skipped, never queued.
 public struct TickGate {
     private var running = false
+    public var isRunning: Bool { running }
     public private(set) var skipped = 0
     public init() {}
     public mutating func begin() -> Bool {

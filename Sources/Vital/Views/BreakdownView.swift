@@ -37,7 +37,9 @@ struct BreakdownView: View {
         } else {
             // On Heat, rows that round to 0.0 W say nothing.
             let all = model.tab == .heat ? model.ranked.filter { ($0.watts ?? 0) >= 0.05 } : model.ranked
-            let groups = Array(all.prefix(model.showAll ? Self.longCount : Self.shortCount))
+            let apps = all.filter { !$0.isAggregate }
+            let groups = Array(apps.prefix(model.showAll ? Self.longCount : Self.shortCount))
+            let system = model.tab == .heat ? nil : all.first { $0.isAggregate }
             VStack(alignment: .leading, spacing: 6) {
                 SectionLabel(title)
                 VStack(spacing: 0) {
@@ -46,13 +48,14 @@ struct BreakdownView: View {
                             .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 6)
                     }
                     ForEach(groups) { g in GroupRow(model: model, group: g) }
-                    if all.count > Self.shortCount {
+                    if apps.count > Self.shortCount {
                         Button(model.showAll ? "Show fewer" : "Show more") { model.showAll.toggle() }
                             .buttonStyle(.plain).focusEffectDisabled()
                             .font(Typo.small).foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.leading, 30).padding(.vertical, 6)
                     }
+                    if let system { GroupRow(model: model, group: system) }      // macOS itself: last, and quieter
                 }
                 .card()
             }
@@ -102,6 +105,7 @@ struct GroupRow: View {
             }
             .buttonStyle(.plain)
             .focusEffectDisabled()
+            .hoverRow()
             .help(group.isAggregate ? "Approximate: macOS does not let apps read these processes exactly" : "")
             .accessibilityElement(children: .combine)
             .accessibilityHint(expandable ? (isOpen ? "Hides processes" : "Shows processes and Quit") : "")
@@ -179,12 +183,13 @@ struct GroupRow: View {
 
 struct PillButton: ButtonStyle {
     var destructive = false
+    var prominent = false
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 11, weight: .medium))
             .padding(.horizontal, 12).padding(.vertical, 4)
-            .background(Capsule().fill(destructive ? Palette.red.opacity(0.75) : Color.primary.opacity(0.14)))
-            .foregroundStyle(destructive ? Color.white : Color.primary)
+            .background(Capsule().fill(destructive ? Palette.red.opacity(0.75) : (prominent ? Palette.blue : Color.primary.opacity(0.14))))
+            .foregroundStyle(destructive || prominent ? Color.white : Color.primary)
             .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }

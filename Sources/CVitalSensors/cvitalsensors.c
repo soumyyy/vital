@@ -50,7 +50,7 @@ static uint32_t fourcc(const char *s) {
 static int smc_call(SMCKeyData *in, SMCKeyData *out) {
     size_t outSize = sizeof(SMCKeyData);
     kern_return_t kr = IOConnectCallStructMethod(g_conn, kSMCHandleYPCEvent, in, sizeof(SMCKeyData), out, &outSize);
-    return (kr == KERN_SUCCESS && out->result == 0) ? 0 : -1;
+    return kr != KERN_SUCCESS ? (int)kr : (out->result == 0 ? 0 : -1000 - out->result);
 }
 
 int vs_smc_read(const char *key, char type_out[5], uint32_t *size_out, uint8_t bytes_out[32]) {

@@ -25,9 +25,10 @@ public struct SMCFanHardware: FanHardware {
             bytes[0] = UInt8(bits >> 8); bytes[1] = UInt8(truncatingIfNeeded: bits)
         default: throw FanSessionError("This Mac's fan control format is unsupported.")
         }
-        guard vs_smc_write(key, size, &bytes) == 0,
-              let actual = number(key), abs(actual - value) < 1 else {
-            throw FanSessionError("macOS refused the fan change. Try Auto; this Mac may not support direct fan control.")
+        let result = vs_smc_write(key, size, &bytes)
+        guard result == 0 else {
+            NSLog("Fan write rejected: %@ (SMC result %d)", key, result)
+            throw FanSessionError("macOS refused the fan change. Try Auto, then reconnect.")
         }
     }
 }
@@ -56,12 +57,13 @@ public final class FanSession {
     }
     public func renew() { heartbeat = clock() }
     public func set(fan: Int, rpm: Double) throws {
-        guard (0..<8).contains(fan), let count = hardware.number("FNum"), Double(fan) < count else {
+        guard (0..<8).contains(fan), let count = hardware.number("FNum"),
+              count.isFinite, count >= 1, count <= 8, count.rounded() == count, Double(fan) < count else {
             throw FanSessionError("Fan is unavailable.")
         }
         if rpm == -1 { try restore(fan); return }
         guard !hot() else { reset(); throw FanSessionError("The Mac is hot. Fans are managed automatically.") }
-        guard resetError == nil else { throw FanSessionError(resetError!) }
+        if let resetError { throw FanSessionError(resetError) }
         guard clock() - lastChange >= 0.2 else { throw FanSessionError("Wait a moment before changing the fan again.") }
         guard let target = FanSafety.target(requested: rpm, minRPM: hardware.number("F\(fan)Mn"), maxRPM: hardware.number("F\(fan)Mx")) else {
             throw FanSessionError("Fan limits or requested speed are invalid.")
@@ -75,6 +77,12 @@ public final class FanSession {
         do {
             try hardware.write(modeKey, value: 1)
             try hardware.write("F\(fan)Tg", value: target)
+            // Verify the complete mode/target transaction; firmware may not latch mode until a
+            // target is present. Give the controller a bounded interval to publish its new state.
+            guard verify({
+                guard hardware.number(modeKey) == 1, let actual = hardware.number("F\(fan)Tg") else { return false }
+                return abs(actual - target) < 1
+            }) else { throw FanSessionError("Fan controller did not retain the requested mode and speed.") }
             targets[fan] = target
             renew()
         } catch {
@@ -85,10 +93,22 @@ public final class FanSession {
     private func restore(_ fan: Int) throws {
         guard let mode = originalAuto[fan] else { return }
         try hardware.write("F\(fan)Md", value: mode)
+        guard verify({ hardware.number("F\(fan)Md") == mode }) else {
+            throw FanSessionError("Fan controller did not return to Auto.")
+        }
         originalAuto.removeValue(forKey: fan)
         targets.removeValue(forKey: fan)
         if originalAuto.isEmpty { resetError = nil }
     }
+    /// The SMC can acknowledge a write before publishing the changed value.
+    private func verify(_ matches: () -> Bool) -> Bool {
+        for attempt in 0..<20 {
+            if matches() { return true }
+            if attempt < 19 { Thread.sleep(forTimeInterval: 0.05) }
+        }
+        return false
+    }
+
     public func reset() {
         for fan in Array(originalAuto.keys) {
             do { try restore(fan) }

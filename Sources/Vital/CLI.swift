@@ -117,29 +117,8 @@ enum CLI {
         }
     }
 
-    /// Renders the panel from live data into a PNG without a display (layout check; glass is not drawn offscreen).
-    /// Usage: Vital --render-panel out.png [--tab=Heat] [--expand-first]
+    /// Renders the panel into a PNG without a display. Options are listed on `PanelRender`.
     private static func renderPanel(to path: String) {
-        MainActor.assumeIsolated {
-            _ = NSApplication.shared
-            let state = AppState()
-            state.start()
-            state.sampler.setMode(.open)
-            let end = Date().addingTimeInterval(6)
-            while Date() < end { RunLoop.main.run(until: Date().addingTimeInterval(0.2)) }
-            let model = PanelModel(appState: state)
-            if let arg = CommandLine.arguments.first(where: { $0.hasPrefix("--tab=") }),
-               let tab = PanelTab(rawValue: String(arg.dropFirst(6))) { model.tab = tab }
-            if CommandLine.arguments.contains("--expand-first"), let g = model.ranked.first { model.expanded.insert(g.id) }
-            for _ in 0..<5 { RunLoop.main.run(until: Date().addingTimeInterval(0.2)) }
-            let host = NSHostingView(rootView: PanelView(model: model).background(Color(white: 0.16)))
-            host.frame = NSRect(x: 0, y: 0, width: 340, height: 680)
-            host.layoutSubtreeIfNeeded()
-            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
-                host.cacheDisplay(in: host.bounds, to: rep)
-                try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
-                print("wrote \(path)")
-            }
-        }
+        MainActor.assumeIsolated { PanelRender.render(to: path) }
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import VitalCore
 
 /// Panel-level background: Liquid Glass on macOS 26+, frosted material below, opaque with Reduce Transparency.
 struct PanelBackground: ViewModifier {
@@ -19,15 +20,24 @@ struct PanelBackground: ViewModifier {
     }
 }
 
-/// An inset card on top of the panel glass. Plain translucent fill: glass on glass looks muddy.
+/// An inset card on top of the panel glass. Plain translucent fill, no border: glass on glass looks muddy.
 struct CardStyle: ViewModifier {
     var radius: CGFloat = 14
     func body(content: Content) -> some View {
         content
-            .padding(.horizontal, 12).padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(.primary.opacity(0.07)))
-            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(.primary.opacity(0.08)))
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Color.primary.opacity(0.055)))
     }
+}
+
+/// Three sizes only: large for the headline and tile numbers, medium for rows, small for labels.
+enum Typo {
+    static let large = Font.system(size: 20, weight: .semibold)
+    static let number = Font.system(size: 20, weight: .semibold, design: .rounded)
+    static let medium = Font.system(size: 13)
+    static let mediumBold = Font.system(size: 13, weight: .medium)
+    static let small = Font.system(size: 11)
+    static let smallBold = Font.system(size: 11, weight: .semibold)
 }
 
 extension View {
@@ -41,7 +51,15 @@ enum Palette {
     static let orange = Color(red: 1.0, green: 0.62, blue: 0.04)
     static let red = Color(red: 1.0, green: 0.27, blue: 0.23)
     static let blue = Color(red: 0.36, green: 0.65, blue: 1.0)
+    /// Chevrons and other quiet glyphs.
+    static let faint = Color.primary.opacity(0.3)
 
-    /// Load level: green under 60%, yellow to 85%, red above.
-    static func level(_ fraction: Double) -> Color { fraction < 0.6 ? green : (fraction < 0.85 ? yellow : red) }
+    /// Status colour for a health level (icons, meters).
+    static func color(_ l: HealthLevel) -> Color {
+        switch l { case .good: return green; case .warning: return yellow; case .critical: return red }
+    }
+    /// Text in a warning colour: yellow is unreadable on a light background, so warnings use orange.
+    static func text(_ l: HealthLevel) -> Color {
+        switch l { case .good: return .primary; case .warning: return orange; case .critical: return red }
+    }
 }

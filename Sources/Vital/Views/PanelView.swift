@@ -4,58 +4,101 @@ import VitalCore
 
 struct PanelView: View {
     @ObservedObject var model: PanelModel
+    @State private var contentHeight: CGFloat = 0
+    @State private var chrome: CGFloat = 0          // everything except the scrolling list
+
+    /// The list scrolls only when the panel would grow past its maximum height.
+    private var scrollHeight: CGFloat { min(contentHeight, max(120, model.maxHeight - chrome)) }
 
     var body: some View {
-        VStack(spacing: 10) {
-            if model.snapshot.band == .struggling { StrugglingStrip(model: model) }
-            RowsView(model: model)
-            TabsView(model: model)
+        VStack(alignment: .leading, spacing: 14) {
+            HeadlineView(model: model)
+            VitalTiles(model: model)
             ScrollView(.vertical, showsIndicators: false) {
-                BreakdownView(model: model)
-                Color.clear.frame(height: 44)      // room to scroll the last row clear of the floating pill
+                VStack(alignment: .leading, spacing: 12) {
+                    BreakdownView(model: model)
+                    DetailsSection(model: model)
+                }
+                .background(GeometryReader { g in Color.clear.preference(key: PanelSizes.self, value: PanelSizes(content: g.size.height)) })
             }
-            .frame(maxHeight: .infinity)
-            if let p = model.pending { ConfirmBar(model: model, pending: p).padding(.bottom, 40) }
-            else if let t = model.toast { ToastBar(text: t).padding(.bottom, 40) }
+            .frame(height: scrollHeight)
+            .background(GeometryReader { g in Color.clear.preference(key: PanelSizes.self, value: PanelSizes(scroll: g.size.height)) })
+            if let p = model.pending { ConfirmBar(model: model, pending: p) }
+            else if let t = model.toast { ToastBar(text: t) }
+            FloatingPill(model: model, storage: model.storage).frame(maxWidth: .infinity)
         }
-        .padding(14)
-        .frame(width: 340, height: 680)
+        .padding(.horizontal, 14).padding(.top, 16).padding(.bottom, 12)
+        .frame(width: 340)
+        .background(GeometryReader { g in Color.clear.preference(key: PanelSizes.self, value: PanelSizes(root: g.size.height)) })
+        .onPreferenceChange(PanelSizes.self) { s in
+            contentHeight = s.content
+            chrome = s.root - s.scroll
+            model.onHeight?(s.root)
+        }
         .panelBackground()
-        .overlay(alignment: .bottom) { FloatingPill(model: model, storage: model.storage).padding(.bottom, 12) }
+        .frame(maxHeight: .infinity, alignment: .top)
         .animation(.easeOut(duration: 0.15), value: model.pending?.id)
-        .animation(.easeOut(duration: 0.15), value: model.tab)
     }
 }
 
-struct StrugglingStrip: View {
+/// Heights reported from one layout pass: the whole panel, the list's visible frame and the list's content.
+struct PanelSizes: PreferenceKey, Equatable {
+    var root: CGFloat = 0, scroll: CGFloat = 0, content: CGFloat = 0
+    static let defaultValue = PanelSizes()
+    static func reduce(value: inout PanelSizes, nextValue: () -> PanelSizes) {
+        let n = nextValue()
+        value = PanelSizes(root: max(value.root, n.root), scroll: max(value.scroll, n.scroll), content: max(value.content, n.content))
+    }
+}
+
+/// One sentence about the whole Mac. When something is wrong it names the app and offers to quit it;
+/// when apps hang it turns into the tinted "struggling" strip with Force Quit.
+struct HeadlineView: View {
     @ObservedObject var model: PanelModel
+
     var body: some View {
+        let h = model.headline
         let hung = model.unresponsiveGroups
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.orange)
-                Text("Mac is struggling").font(.system(size: 12, weight: .semibold))
-                Spacer()
+        let culprit = h.culpritID.flatMap(model.group(id:))
+        let alarming = h.level == .critical
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: symbol(h.level))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Palette.color(h.level))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(h.title).font(Typo.large).fixedSize(horizontal: false, vertical: true)
+                    if let d = h.detail {
+                        Text(d).font(Typo.medium).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
-            Text(cause).font(.system(size: 11)).foregroundStyle(.secondary)
             if !hung.isEmpty {
-                Button("Force Quit \(hung.count) not responding") { model.request(.quitAllUnresponsive, hung) }
-                    .buttonStyle(PillButton(destructive: true))
+                Button(hung.count == 1 ? "Force Quit \(hung[0].name)" : "Force Quit \(hung.count) not responding") {
+                    model.request(.quitAllUnresponsive, hung)
+                }
+                .buttonStyle(PillButton(destructive: true)).padding(.leading, 25)
+            } else if let g = culprit, h.level > .good {
+                Button("Quit \(g.name)…") { model.request(.quit, [g]) }
+                    .buttonStyle(PillButton()).padding(.leading, 25)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card()
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Palette.orange.opacity(0.18)))
+        .padding(alarming ? 12 : 0)
+        .padding(.horizontal, alarming ? 0 : 4)
+        .background {
+            if alarming { RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Palette.red.opacity(0.14)) }
+        }
+        .accessibilityElement(children: .contain)
     }
 
-    private var cause: String {
-        let s = model.snapshot
-        if s.thermal.state >= .serious { return "The Mac is hot and slowing itself down to cool off." }
-        if s.memory?.pressure == .critical { return "Memory is almost full, so the Mac is swapping to disk." }
-        if let top = Ranking.sorted(s.groups.filter { !$0.isAggregate }, by: .cpu).first, top.cpuCores > 0.5 {
-            return "\(top.name) is using the most CPU."
+    private func symbol(_ l: HealthLevel) -> String {
+        switch l {
+        case .good: return "checkmark.circle.fill"
+        case .warning: return "exclamationmark.circle.fill"
+        case .critical: return "exclamationmark.triangle.fill"
         }
-        return "Heavy load for the last few seconds."
     }
 }
 
@@ -64,8 +107,8 @@ struct ConfirmBar: View {
     let pending: PendingAction
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(pending.title).font(.system(size: 12, weight: .semibold))
-            Text(detail).font(.system(size: 11)).foregroundStyle(.secondary)
+            Text(pending.title).font(Typo.mediumBold)
+            Text(detail).font(Typo.small).foregroundStyle(.secondary)
             HStack {
                 Spacer()
                 Button("Cancel") { model.cancelPending() }.buttonStyle(PillButton())
@@ -85,11 +128,11 @@ struct ConfirmBar: View {
 struct ToastBar: View {
     let text: String
     var body: some View {
-        Text(text).font(.system(size: 11)).frame(maxWidth: .infinity, alignment: .leading).card()
+        Text(text).font(Typo.small).frame(maxWidth: .infinity, alignment: .leading).card()
     }
 }
 
-/// Floating capsule at the bottom of the panel: refresh and the three-dot menu.
+/// Glass capsule at the foot of the panel: refresh and the three-dot menu.
 struct FloatingPill: View {
     @ObservedObject var model: PanelModel
     @ObservedObject var storage: StorageStore
@@ -120,7 +163,7 @@ struct FloatingPill: View {
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel("Vital menu")
         }
-        .foregroundStyle(.primary.opacity(0.8))
+        .foregroundStyle(Color.primary.opacity(0.8))
         .padding(.horizontal, 16).padding(.vertical, 7)
         .modifier(PillBackground(reduceTransparency: reduceTransparency))
     }

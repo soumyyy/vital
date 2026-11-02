@@ -40,38 +40,21 @@ struct Sparkline: View {
     }
 }
 
-struct UsageBar: View {
-    let fraction: Double
-    let color: Color
+/// Thin meter under a tile number. Neutral when the vital is fine; yellow or red only when it matters.
+struct Meter: View {
+    let fraction: Double?
+    let level: HealthLevel
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(.primary.opacity(0.12))
-                Capsule().fill(color).frame(width: max(4, geo.size.width * CGFloat(min(max(fraction, 0), 1))))
+                Capsule().fill(Color.primary.opacity(0.1))
+                if let f = fraction {
+                    Capsule().fill(level == .good ? AnyShapeStyle(Color.primary.opacity(0.4)) : AnyShapeStyle(Palette.color(level)))
+                        .frame(width: max(3, geo.size.width * CGFloat(min(max(f, 0), 1))))
+                }
             }
         }
-        .frame(height: 6)
-        .accessibilityHidden(true)
-    }
-}
-
-/// Green-yellow-red scale with a marker at the current temperature.
-struct ThermalScale: View {
-    let fraction: Double
-    var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(LinearGradient(colors: [Palette.green, Palette.yellow, Palette.red],
-                                              startPoint: .leading, endPoint: .trailing))
-                    .frame(height: 8).opacity(0.9)
-                Capsule().fill(.white)
-                    .frame(width: 4, height: 14)
-                    .shadow(color: .black.opacity(0.4), radius: 2)
-                    .offset(x: max(0, min(geo.size.width - 4, geo.size.width * CGFloat(fraction) - 2)))
-            }
-            .frame(maxHeight: .infinity, alignment: .center)
-        }
-        .frame(height: 14)
+        .frame(height: 3)
         .accessibilityHidden(true)
     }
 }

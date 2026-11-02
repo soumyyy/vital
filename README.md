@@ -2,14 +2,14 @@
 
 A lean menu bar monitor for Apple Silicon Macs. It answers one question: what is eating my Mac right now, and can I stop it?
 
-- **CPU** as plain core counts, shown both as a share of the whole CPU and Activity Monitor style (100% = one core), smoothed over 5 seconds. **Memory** with swap and pressure, **storage**, **temperature and fans** on a green-yellow-red scale.
-- **Breakdown per app**: Chrome plus its helpers is one entry, expandable to individual processes. Tabs rank by CPU, memory, storage or heat (power draw).
-- **Battery** (charge, watts, time left, health, cycles), **network speed**, **idle wake-ups** per app on the Heat tab, and a flag on apps that are **keeping the Mac awake**.
-- **Disk** tab: which apps read and write the most, how much the Mac is reading back from disk because memory is short, and bytes written since launch.
-- **Fans**: live speed, a manual RPM slider, and an Auto button on the Heat tab. Click **Enable control**, then approve Vital in System Settings → General → Login Items & Extensions. The bundled root helper clamps speeds to hardware limits and resets to Auto on disconnect, sleep, high thermal pressure, or a missed heartbeat. Manual mode is temporary and is not saved across launches. Direct `F0Md` fan control is supported; Macs that require `Ftst` unlocking or Intel `FS!` control show an error.
-- **Refresh** button for a fresh sample, and a rescan on the Storage tab (about 40 s for a full scan on an SSD with 450 GB used).
+- **One headline**: a single sentence says whether your Mac is fine and, if not, which app is the cause, with a Quit button. When apps stop responding it turns red with Force Quit.
+- **Four vitals, one number each**: CPU, memory, storage and heat. Colour appears only when something needs attention. Tap a vital to list the apps using the most of it (folders, for storage).
+- **Breakdown per app**: Chrome plus its helpers is one entry, expandable to its processes (merged by name) with Quit and Force Quit. CPU is a share of the whole CPU, smoothed over 5 seconds; hover a process for the Activity Monitor figure (100% = one core).
+- **Details on demand**: each vital has a Details section, closed by default: performance and efficiency cores; memory pressure, swap and memory read back from disk; free space and which apps read and write the disk; temperatures, battery (charge, watts, time left, health, cycles), network speed and apps keeping the Mac awake. Idle wake-ups show in an expanded app on Heat.
+- **Fans**: live speed, a manual RPM slider, and an Auto button under Heat → Details. Click **Enable control**, then approve Vital in System Settings → General → Login Items & Extensions. The bundled root helper clamps speeds to hardware limits and resets to Auto on disconnect, sleep, high thermal pressure, or a missed heartbeat. Manual mode is temporary and is not saved across launches. Direct `F0Md` fan control is supported; Macs that require `Ftst` unlocking or Intel `FS!` control show an error.
+- **Refresh** button for fresh readings, and a rescan when Storage is selected (about 40 s for a full scan on an SSD with 450 GB used).
 - **Quit and Force Quit** with confirmation, protected system processes, and truthful results (including processes stuck in the kernel).
-- **Mac is struggling** strip with "Force Quit not responding" when the machine is overloaded.
+- The panel is as tall as its content (up to 680 pt), so a calm Mac gets a short panel.
 - Liquid Glass panel on macOS 26+, frosted material on macOS 14 and 15, opaque with Reduce Transparency.
 
 macOS 14+, Apple Silicon (M1 and later). No network access, no telemetry.
@@ -29,10 +29,10 @@ swift test                       # 95 tests
 | State | Footprint | CPU |
 |---|---|---|
 | Panel never opened | 12 MB | about 0.02% (wakes every 15 s when calm, every 5 s when busy) |
-| Panel open | about 33 MB | about 1.8% (updates every 2 s) |
-| Panel closed again | about 28 MB | about 0% |
+| Panel open | about 27 MB | about 1.4% (updates every 2 s) |
+| Panel closed again | about 26 MB | about 0% |
 
-The 28 MB after closing is the floor for SwiftUI in this process: an empty panel alone leaves 17 MB, and the panel content the rest. Going lower would take a separate short-lived UI process.
+The 26 MB after closing is the floor for SwiftUI in this process: an empty panel alone leaves 17 MB, and the panel content the rest. Going lower would take a separate short-lived UI process.
 
 ## How it works
 

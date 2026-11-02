@@ -2,16 +2,24 @@ import AppKit
 import SwiftUI
 import VitalCore
 
+/// The four vital tiles double as the selector for the list below them.
 enum PanelTab: String, CaseIterable, Identifiable {
-    case cpu = "CPU", memory = "Memory", storage = "Storage", disk = "Disk", heat = "Heat"
+    case cpu = "CPU", memory = "Memory", storage = "Storage", heat = "Heat"
     var id: String { rawValue }
     var metric: RankMetric {
         switch self {
         case .memory: return .memory
         case .heat: return .power
-        case .disk: return .disk
         default: return .cpu
         }
+    }
+    init(_ kind: VitalKind) {
+        switch kind { case .cpu: self = .cpu; case .memory: self = .memory; case .storage: self = .storage; case .heat: self = .heat }
+    }
+    /// From a `--tab=` argument; "Disk" (an old tab) maps to Storage.
+    init?(argument: String) {
+        if argument == "Disk" { self = .storage; return }
+        self.init(rawValue: argument)
     }
 }
 
@@ -41,6 +49,8 @@ final class PanelModel: ObservableObject {
     @Published var history: [Double]
     @Published var tab: PanelTab = .cpu { didSet { tabChanged(from: oldValue) } }
     @Published var expanded: Set<String> = []
+    @Published var showDetails = false
+    @Published var showAll = false
     @Published var pending: PendingAction?
     @Published var toast: String?
 
@@ -56,6 +66,8 @@ final class PanelModel: ObservableObject {
         self.appState = appState
         self.snapshot = appState.latest
         self.history = appState.cpuHistory
+        // Open on the vital the headline is about. Not Storage: that would start a folder scan on every open.
+        if let focus = Health.headline(appState.latest).focus, focus != .storage { tab = PanelTab(focus) }
         appState.onSnapshot = { [weak self] snap in
             guard let self else { return }
             self.snapshot = snap
@@ -71,14 +83,17 @@ final class PanelModel: ObservableObject {
 
     // MARK: derived
 
-    var ranked: [AppGroup] {
-        let groups = tab == .disk ? snapshot.groups.filter { !$0.isAggregate } : snapshot.groups
-        return Ranking.sorted(groups, by: tab.metric)
-    }
+    var headline: Headline { Health.headline(snapshot) }
 
-    var unresponsiveGroups: [AppGroup] {
-        snapshot.groups.filter { g in g.processes.contains { snapshot.unresponsivePIDs.contains($0.pid) } && !g.isProtected }
-    }
+    var ranked: [AppGroup] { Ranking.sorted(snapshot.groups, by: tab.metric) }
+
+    func group(id: String) -> AppGroup? { snapshot.groups.first { $0.id == id } }
+
+    /// Height the panel content wants; the controller resizes the window to it, keeping the top edge.
+    var onHeight: ((CGFloat) -> Void)?
+    var maxHeight: CGFloat = 680
+
+    var unresponsiveGroups: [AppGroup] { headline.hungIDs.compactMap(group(id:)) }
 
     func isUnresponsive(_ g: AppGroup) -> Bool {
         g.processes.contains { snapshot.unresponsivePIDs.contains($0.pid) }
@@ -112,6 +127,12 @@ final class PanelModel: ObservableObject {
     }
 
     // MARK: actions
+
+    func select(_ t: PanelTab) {
+        guard t != tab else { return }
+        tab = t
+        showAll = false
+    }
 
     func toggle(_ g: AppGroup) {
         if expanded.contains(g.id) { expanded.remove(g.id) } else { expanded.insert(g.id) }

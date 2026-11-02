@@ -39,3 +39,42 @@ The Opus delegate ran out of usage mid-task after the icon and part of the stora
 Round 3: added network speed, battery card, idle wake-ups (Heat tab) and keeping-awake flags. 83 tests. Open panel about 33 MB, about 29 MB after closing. Disk tab not built (owner did not pick it).
 
 Round 4 (lean): closed cadence 15 s when calm (5 s when busy), open cadence 2 s, hang check every 6 s, -Osize and strip (binary 2.0 MB to 0.85 MB). Measured: closed 12 MB and about 0.02% CPU; open 33 MB and about 1.8% CPU; after closing 28 MB. Bisect: empty panel leaves 17 MB, rows 3 MB, list 5 MB, tabs and pill 1 MB each, so about 17 MB is the SwiftUI floor.
+
+## Round 5: UI redesign (spec)
+
+Problem: the top half of the panel was five stacked vital cards (CPU, Memory, Storage, Thermal, Battery and Network), then five tabs, then the app list, which was mostly below the fold. The same number appeared up to four times (CPU % in card header, "Using N of 8 cores", row value, "% of a core"). P/E cores, swap, health, cycles, network and sleep blockers were all default-visible.
+
+New hierarchy (top to bottom, one canonical place per fact):
+1. Headline: one sentence that answers "is my Mac healthy?" ("Your Mac is running fine", "Chrome is slowing your Mac", "Memory is getting full"), an optional one-line reason, and a Quit button for the culprit app when there is one. When an app is not responding, the headline becomes the tinted struggling strip with "Force Quit N not responding". Derived by a pure `Health.headline(_:)` in VitalCore (tested).
+2. Vital tiles: CPU, Memory, Storage, Heat. One number each (CPU %, memory used %, storage used %, hottest °C), and a thin meter that is neutral when fine and yellow or red only when it matters. The tiles are the selector (replaces the five tabs). The panel opens on the tile the headline is about.
+3. Top apps for the selected tile: icon, name, one value. Six rows, "Show more" for up to twelve. Subtitles only for meaning ("Not responding"). Tap a row for its processes and Quit / Force Quit. Storage shows folder categories instead.
+4. Details (disclosure under the list, closed by default), per tile:
+   - CPU: last 2 minutes chart, cores in use, performance / efficiency cores.
+   - Memory: used of total, pressure, swap, reading back from swap (page-ins) with the thrashing warning.
+   - Storage: used of total and free, disk activity (reading and writing totals and the top apps; this was the Disk tab), Full Disk Access and skipped-folder notes.
+   - Heat: CPU and GPU temperature, battery (charge, state, time, health, cycles), network speed, apps keeping the Mac awake, fan card (only when the Mac has fans).
+   - Per-app extras moved into the expanded row: "% of a core" (CPU), wake-ups and keeping-awake (Heat).
+
+Removed or merged: Disk tab (into Storage details and Memory details), Battery/Network card (into Heat details), separate struggling strip (merged into the headline), "8 cores" and "N processes" labels, thermal gradient scale, per-row second value line, card borders.
+
+Panel height follows content (capped at 680 pt, top edge stays under the menu bar icon), so a calm Mac gets a short panel.
+
+- [x] Health.headline + tile levels in VitalCore, with tests
+- [x] Tiles, headline, list, details views; remove RowsView and TabsView
+- [x] Dynamic panel height in PanelController
+- [x] Renderer: --mock=calm|busy|struggling, --appearance=light|dark, --details, --wait=N
+- [x] Renders reviewed for every state, iterate once
+- [x] swift build, swift test, footprint and CPU measured
+- [x] Commit own files only, push
+
+## Round 5: UI redesign (review)
+
+Built as specced. Tabs went from five to none: the four vital tiles are the selector. Disk folded into Storage details (reading, writing, busiest apps) and Memory details (read back from disk). The struggling strip merged into the headline. Expanded apps merge processes by name ("Browser Helper ×24"); the "% of a core" figure moved to a hover tooltip. On Heat, rows at 0.0 W are hidden. The panel opens on the vital the headline is about (never Storage, which would start a scan).
+
+Verified offscreen (display asleep): calm, busy, struggling with a not-responding app, CPU/Memory/Heat details, an expanded app, Storage while scanning, light and dark. Renders in /tmp/vital-render/v4 and v5. Iterations fixed: duplicated process names, two percentages per process line, 0.0 W rows, "Cores in use" restating the CPU tile, and offscreen appearance bugs in the renderer.
+
+Tests: 111 pass (12 new in HealthTests).
+
+Measured (same machine, same method, release builds, A/B against HEAD): panel open 34 MB to 27 MB, open CPU 1.9% to 1.3-1.5%, after close 30 MB to 25-26 MB, never opened 11-12 MB and about 0% (unchanged).
+
+Not verified: the live panel on screen (resize animation, top edge staying under the icon, Liquid Glass look, hover tooltips), macOS 14/15 frosted fallback, and a real hung app (staged with --mock).

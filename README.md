@@ -4,6 +4,7 @@ A lean menu bar monitor for Apple Silicon Macs. It answers one question: what is
 
 - **CPU** as plain core counts, shown both as a share of the whole CPU and Activity Monitor style (100% = one core), smoothed over 5 seconds. **Memory** with swap and pressure, **storage**, **temperature and fans** on a green-yellow-red scale.
 - **Breakdown per app**: Chrome plus its helpers is one entry, expandable to individual processes. Tabs rank by CPU, memory, storage or heat (power draw).
+- **Battery** (charge, watts, time left, health, cycles), **network speed**, **idle wake-ups** per app on the Heat tab, and a flag on apps that are **keeping the Mac awake**.
 - **Fans**: live speed with min and max. Changing fan speed needs a root helper that is not built; the control is disabled and says why (see `docs/superpowers/specs/2026-11-02-fan-control-helper.md`).
 - **Refresh** button for a fresh sample, and a rescan on the Storage tab (about 40 s for a full scan on an SSD with 450 GB used).
 - **Quit and Force Quit** with confirmation, protected system processes, and truthful results (including processes stuck in the kernel).
@@ -17,7 +18,7 @@ macOS 14+, Apple Silicon (M1 and later). No network access, no telemetry.
 ```sh
 Scripts/build-app.sh release     # build/Vital.app (ad-hoc signed)
 open build/Vital.app
-swift test                       # 68 tests
+swift test                       # 83 tests
 ```
 
 `Scripts/release.sh` makes a DMG. With `SIGN_IDENTITY="Developer ID Application: ..."` and `NOTARY_PROFILE=<notarytool keychain profile>` it signs and notarizes.
@@ -27,7 +28,7 @@ swift test                       # 68 tests
 | State | Footprint | CPU |
 |---|---|---|
 | Panel never opened | 12 MB (re-measured after the last changes) | about 0% (5 s cadence, no process scan) |
-| Panel open | about 30 MB | about 3% at 1 s cadence |
+| Panel open | about 33 MB | about 3% at 1 s cadence |
 | Panel closed again | about 25-28 MB (SwiftUI and font caches stay) | about 0% |
 
 ## How it works

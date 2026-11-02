@@ -35,3 +35,5 @@ Fan control: NOT built. An unprivileged SMC write is refused (kIOReturnNotPrivil
 Not verified visually in the live menu bar this round: the display was off, so the new panel and icon were checked through offscreen rendering (`Vital --render-panel`, `--dump-icons`) and command line probes only. 68 tests pass; closed-panel footprint 12 MB, about 0% CPU.
 
 The Opus delegate ran out of usage mid-task after the icon and part of the storage work; the rest was finished directly.
+
+Round 3: added network speed, battery card, idle wake-ups (Heat tab) and keeping-awake flags. 83 tests. Open panel about 33 MB, about 29 MB after closing. Disk tab not built (owner did not pick it).

@@ -5,6 +5,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appState: AppState?
     private var statusController: StatusItemController?
 
+    func applicationWillTerminate(_ notification: Notification) { appState?.fanController.stop() }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         let state = AppState()
         appState = state

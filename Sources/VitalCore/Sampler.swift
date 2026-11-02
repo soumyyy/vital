@@ -9,6 +9,8 @@ public final class Sampler {
     private var gate = TickGate()
     private var mode: SamplerMode = .closed
     private var multiplier = 1.0
+    private var scheduledInterval: TimeInterval = 0
+    private var lastUnresponsive: (pids: Set<Int32>, time: Date)?
     private var running = false
 
     private let cpu = CPUSampler()
@@ -60,7 +62,7 @@ public final class Sampler {
             multiplier = 1
             if newMode == .closed {
                 processes.reset(); smoother.resetProcesses(); networkSampler.reset(); primedProcesses = false
-                lastBattery = nil; lastBlockers = nil
+                lastBattery = nil; lastBlockers = nil; lastUnresponsive = nil
             }
             if running { scheduleTimer(); tick() }
         }
@@ -68,7 +70,8 @@ public final class Sampler {
 
     private func scheduleTimer() {
         timer?.cancel()
-        let interval = SamplerPolicy.baseInterval(mode) * multiplier
+        let interval = SamplerPolicy.baseInterval(mode, band: load.band) * multiplier
+        scheduledInterval = interval
         let t = DispatchSource.makeTimerSource(queue: queue)
         t.schedule(deadline: .now() + interval, repeating: interval, leeway: .milliseconds(Int(interval * 200)))
         t.setEventHandler { [weak self] in self?.tick() }
@@ -145,11 +148,16 @@ public final class Sampler {
             if hasProcessData {
                 let sysCores = cpuReading.map { $0.total * Double($0.perCore.count) }
                 groups = Grouping.group(sample.rows, systemCPUCores: sysCores, memoryUsedBytes: memory?.usedBytes)
-                for g in groups where g.bundlePath != nil {
-                    for p in g.processes where NSRunningApplication(processIdentifier: p.pid)?.activationPolicy == .regular {
-                        if vs_app_unresponsive(p.pid) == 1 { unresponsive.insert(p.pid) }
+                if lastUnresponsive == nil || started.timeIntervalSince(lastUnresponsive!.time) >= SamplerPolicy.unresponsiveCheckInterval {
+                    var found = Set<Int32>()
+                    for g in groups where g.bundlePath != nil {
+                        for p in g.processes where NSRunningApplication(processIdentifier: p.pid)?.activationPolicy == .regular {
+                            if vs_app_unresponsive(p.pid) == 1 { found.insert(p.pid) }
+                        }
                     }
+                    lastUnresponsive = (found, started)
                 }
+                unresponsive = lastUnresponsive?.pids ?? []
             }
         }
 
@@ -181,8 +189,10 @@ public final class Sampler {
         lock.lock(); _latest = snap; lock.unlock()
         onSnapshot(snap)
 
-        let newMultiplier = SamplerPolicy.adapt(multiplier: multiplier, tickDuration: Date().timeIntervalSince(started),
-                                                base: SamplerPolicy.baseInterval(mode))
-        if newMultiplier != multiplier { multiplier = newMultiplier; if running { scheduleTimer() } }
+        let base = SamplerPolicy.baseInterval(mode, band: band)
+        let newMultiplier = SamplerPolicy.adapt(multiplier: multiplier, tickDuration: Date().timeIntervalSince(started), base: base)
+        multiplier = newMultiplier
+        // Reschedule when backing off, or when the calm/busy band changes the closed-panel interval.
+        if running, abs(base * multiplier - scheduledInterval) > 0.01 { scheduleTimer() }
     }
 }

@@ -80,6 +80,28 @@ int vs_smc_read(const char *key, char type_out[5], uint32_t *size_out, uint8_t b
     return 0;
 }
 
+int vs_smc_write(const char *key, uint32_t size, const uint8_t *bytes) {
+    if (!key || strlen(key) != 4 || !bytes || size == 0 || size > 32) return -3;
+    pthread_mutex_lock(&g_lock);
+    int rc = smc_open_locked();
+    if (rc == 0) {
+        SMCKeyData in = {0}, out = {0};
+        in.key = fourcc(key);
+        in.data8 = kSMCGetKeyInfo;
+        rc = smc_call(&in, &out);
+        if (rc == 0 && out.keyInfo.dataSize != size) rc = -5;
+        if (rc == 0) {
+            memset(&out, 0, sizeof out);
+            in.keyInfo.dataSize = size;
+            in.data8 = 6;
+            memcpy(in.bytes, bytes, size);
+            rc = smc_call(&in, &out);
+        }
+    }
+    pthread_mutex_unlock(&g_lock);
+    return rc;
+}
+
 // ---- HID temperature sensors (private IOKit API, same data powermetrics reads) ----
 typedef struct __IOHIDEvent *IOHIDEventRef;
 typedef struct __IOHIDServiceClient *IOHIDServiceClientRef;

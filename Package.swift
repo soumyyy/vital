@@ -4,7 +4,8 @@ import PackageDescription
 let package = Package(
     name: "Vital",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "Vital", targets: ["Vital"])],
+    products: [.executable(name: "Vital", targets: ["Vital"]),
+        .executable(name: "VitalFanHelper", targets: ["VitalFanHelper"])],
     targets: [
         .target(
             name: "CVitalSensors",
@@ -12,14 +13,16 @@ let package = Package(
         .target(
             name: "VitalCore",
             dependencies: ["CVitalSensors"],
-            swiftSettings: [.swiftLanguageMode(.v5)]),
+            swiftSettings: [.swiftLanguageMode(.v5), .unsafeFlags(["-Osize"], .when(configuration: .release))]),
         .executableTarget(
             name: "Vital",
-            dependencies: ["VitalCore"],
+            dependencies: ["VitalCore", "VitalFanIPC"],
             swiftSettings: [.swiftLanguageMode(.v5)]),
+        .target(name: "VitalFanIPC", swiftSettings: [.swiftLanguageMode(.v5)]),
+        .executableTarget(name: "VitalFanHelper", dependencies: ["VitalCore", "VitalFanIPC", "CVitalSensors"], swiftSettings: [.swiftLanguageMode(.v5)]),
         .testTarget(
             name: "VitalCoreTests",
             dependencies: ["VitalCore"],
-            swiftSettings: [.swiftLanguageMode(.v5)]),
+            swiftSettings: [.swiftLanguageMode(.v5), .unsafeFlags(["-Osize"], .when(configuration: .release))]),
     ]
 )

@@ -16,14 +16,14 @@ public enum FanControlError: Error, Equatable, Sendable {
 }
 
 /// Seam for changing fan speed. Reading fans needs no privileges and lives in ThermalSampler; writing
-/// does (macOS answers kIOReturnNotPrivileged to an unprivileged SMC write), so a real implementation
-/// would be a privileged helper. See docs/superpowers/specs/2026-11-02-fan-control-helper.md.
+/// does (macOS answers kIOReturnNotPrivileged to an unprivileged SMC write). VitalFanHelper
+/// provides the writer; FanClient manages its approved XPC connection.
 public protocol FanController: Sendable {
     var availability: FanControlAvailability { get }
     func setMode(fan: Int, mode: FanMode) async throws
 }
 
-/// Used until a privileged helper exists. Never pretends to change anything.
+/// Fallback for contexts without a privileged helper. Never pretends to change anything.
 public struct NoopFanController: FanController {
     public init() {}
     public var availability: FanControlAvailability {
@@ -36,7 +36,7 @@ public enum FanSafety {
     /// A requested manual speed, clamped into the fan's own limits. Never below the system minimum
     /// (below it the fan could stall under load) and never above the maximum. nil for an unusable request.
     public static func target(requested: Double, minRPM: Double?, maxRPM: Double?) -> Double? {
-        guard requested.isFinite, let lo = minRPM, let hi = maxRPM, lo > 0, hi > lo else { return nil }
+        guard requested.isFinite, let lo = minRPM, let hi = maxRPM, lo.isFinite, hi.isFinite, lo > 0, hi > lo else { return nil }
         return min(hi, max(lo, requested))
     }
 }

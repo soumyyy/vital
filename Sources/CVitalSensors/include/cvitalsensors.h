@@ -1,6 +1,8 @@
 #ifndef CVITALSENSORS_H
 #define CVITALSENSORS_H
 #include <stdint.h>
+#include <IOKit/IOMessage.h>
+enum { VS_SYSTEM_WILL_SLEEP = kIOMessageSystemWillSleep, VS_CAN_SYSTEM_SLEEP = kIOMessageCanSystemSleep };
 
 // --- SMC (fans) ---------------------------------------------------------
 // Opens the AppleSMC connection if needed. Returns 0 on success.
@@ -9,6 +11,9 @@ void vs_smc_close(void);
 // Reads a 4-character key. On success returns 0 and fills type (4 chars, NUL-terminated),
 // size and up to 32 bytes. Non-zero on failure (key missing, SMC unavailable).
 int vs_smc_read(const char *key, char type_out[5], uint32_t *size_out, uint8_t bytes_out[32]);
+
+// Writes only an existing key, with an exact size match. Used by the root fan helper.
+int vs_smc_write(const char *key, uint32_t size, const uint8_t *bytes);
 
 // --- HID temperature sensors (Apple Silicon) ----------------------------
 #define VS_MAX_SENSORS 96

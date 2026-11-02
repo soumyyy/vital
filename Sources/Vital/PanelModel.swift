@@ -48,6 +48,7 @@ final class PanelModel: ObservableObject {
     private let appState: AppState
     private let actions = ProcessActions()
     var storage: StorageStore { appState.storage }
+    var fanController: FanClient { appState.fanController }
     var fanAvailability: FanControlAvailability { appState.fanController.availability }
     private var toastTask: Task<Void, Never>?
 

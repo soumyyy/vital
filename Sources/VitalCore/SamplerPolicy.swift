@@ -3,12 +3,18 @@ import Foundation
 public enum SamplerMode: Sendable { case closed, open }
 
 public enum SamplerPolicy {
-    public static let openInterval: TimeInterval = 1
-    public static let closedInterval: TimeInterval = 5
+    /// Panel open: every 2 s (the panel re-renders on each reading, so this halves its CPU cost).
+    public static let openInterval: TimeInterval = 2
+    /// Panel closed and the Mac calm: every 15 s. Anything busy brings it back to 5 s.
+    public static let closedCalmInterval: TimeInterval = 15
+    public static let closedBusyInterval: TimeInterval = 5
+    /// How often the (comparatively costly) "not responding" check runs while the panel is open.
+    public static let unresponsiveCheckInterval: TimeInterval = 6
     public static let maxBackoff: Double = 4
 
-    public static func baseInterval(_ mode: SamplerMode) -> TimeInterval {
-        mode == .open ? openInterval : closedInterval
+    public static func baseInterval(_ mode: SamplerMode, band: LoadBand = .calm) -> TimeInterval {
+        if mode == .open { return openInterval }
+        return band == .calm ? closedCalmInterval : closedBusyInterval
     }
 
     /// Backs the interval off when a tick takes a large share of it, so Vital never competes with a

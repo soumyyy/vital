@@ -2,8 +2,11 @@ import Testing
 @testable import VitalCore
 
 @Test func cadenceByMode() {
-    #expect(SamplerPolicy.baseInterval(.open) == 1)
-    #expect(SamplerPolicy.baseInterval(.closed) == 5)
+    #expect(SamplerPolicy.baseInterval(.open) == 2)
+    #expect(SamplerPolicy.baseInterval(.open, band: .struggling) == 2)
+    #expect(SamplerPolicy.baseInterval(.closed, band: .calm) == 15)
+    #expect(SamplerPolicy.baseInterval(.closed, band: .busy) == 5)
+    #expect(SamplerPolicy.baseInterval(.closed, band: .struggling) == 5)
 }
 
 @Test func backsOffWhenTicksAreExpensiveAndRelaxesWhenCheap() {

@@ -6,7 +6,7 @@ A lean menu bar monitor for Apple Silicon Macs. It answers one question: what is
 - **Breakdown per app**: Chrome plus its helpers is one entry, expandable to individual processes. Tabs rank by CPU, memory, storage or heat (power draw).
 - **Battery** (charge, watts, time left, health, cycles), **network speed**, **idle wake-ups** per app on the Heat tab, and a flag on apps that are **keeping the Mac awake**.
 - **Disk** tab: which apps read and write the most, how much the Mac is reading back from disk because memory is short, and bytes written since launch.
-- **Fans**: live speed with min and max. Changing fan speed needs a root helper that is not built; the control is disabled and says why (see `docs/superpowers/specs/2026-11-02-fan-control-helper.md`).
+- **Fans**: live speed, a manual RPM slider, and an Auto button on the Heat tab. Click **Enable control**, then approve Vital in System Settings → General → Login Items & Extensions. The bundled root helper clamps speeds to hardware limits and resets to Auto on disconnect, sleep, high thermal pressure, or a missed heartbeat. Manual mode is temporary and is not saved across launches. Direct `F0Md` fan control is supported; Macs that require `Ftst` unlocking or Intel `FS!` control show an error.
 - **Refresh** button for a fresh sample, and a rescan on the Storage tab (about 40 s for a full scan on an SSD with 450 GB used).
 - **Quit and Force Quit** with confirmation, protected system processes, and truthful results (including processes stuck in the kernel).
 - **Mac is struggling** strip with "Force Quit not responding" when the machine is overloaded.

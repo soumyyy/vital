@@ -20,11 +20,9 @@ struct OverviewView: View {
                 cpuCard(s, series(h.cpu, false))
                 memoryCard(s, series(h.memory, false))
                 diskCard(s, read: series(h.diskRead, true), write: series(h.diskWrite, true))
-                networkCard(s, down: series(h.down, true), up: series(h.up, true))
                 heatCard(s, series(h.heat, false))
-                storageCard(s)
             }
-            if let b = s.battery { BatteryCard(battery: b) }
+            thinRows(s, down: series(h.down, true), up: series(h.up, true))
             Text("Graphs show the last five minutes.").font(Typo.small).foregroundStyle(.secondary).padding(.horizontal, 4)
         }
     }
@@ -62,19 +60,6 @@ struct OverviewView: View {
         }
     }
 
-    private func networkCard(_ s: Snapshot, down: [Double], up: [Double]) -> some View {
-        let n = s.network
-        let top = max(100_000, (down + up).max() ?? 0)
-        return OverviewCard(title: "Network", value: n.map { "↓ " + Format.rate($0.downBytesPerSec) } ?? "…", level: .good,
-                            caption: Text("●").foregroundColor(Palette.orange) + Text(" ↑ " + (n.map { Format.rate($0.upBytesPerSec) } ?? "")),
-                            captionSpoken: "upload " + (n.map { Format.rate($0.upBytesPerSec) } ?? ""), open: nil) {
-            ZStack {
-                Sparkline(values: down.map { $0 / top }, color: Palette.blue, filled: false, slots: Self.buckets)
-                Sparkline(values: up.map { $0 / top }, color: Palette.orange, filled: false, slots: Self.buckets)
-            }
-        }
-    }
-
     private func heatCard(_ s: Snapshot, _ values: [Double]) -> some View {
         let level = Health.heat(s.thermal.state)
         let value = s.thermal.hottestCelsius.map { "\(Int($0.rounded()))°" } ?? VitalTiles.word(s.thermal.state)
@@ -86,13 +71,34 @@ struct OverviewView: View {
         }
     }
 
-    private func storageCard(_ s: Snapshot) -> some View {
+    /// Storage, network and battery need one line each.
+    private func thinRows(_ s: Snapshot, down: [Double], up: [Double]) -> some View {
         let st = s.storage
-        let level = st.map { Health.storage(usedFraction: $0.usedFraction) } ?? .good
-        return OverviewCard(title: "Storage", value: st.map { Format.percent($0.usedFraction) } ?? "n/a", level: level,
-                            caption: Text(st.map { "\(Format.bytes($0.availableBytes, base: .decimal)) free" } ?? ""), captionSpoken: "free space", open: { model.select(.storage) }) {
-            VStack { Spacer(minLength: 0); Meter(fraction: st?.usedFraction, level: level).frame(height: 6) }
+        let storageLevel = st.map { Health.storage(usedFraction: $0.usedFraction) } ?? .good
+        let top = max(100_000, (down + up).max() ?? 0)
+        return VStack(spacing: 0) {
+            ThinRow(title: "Storage", value: st.map { "\(Format.percent($0.usedFraction)) · \(Format.bytes($0.availableBytes, base: .decimal)) free" } ?? "n/a",
+                    level: storageLevel, open: { model.select(.storage) }) {
+                Meter(fraction: st?.usedFraction, level: storageLevel).frame(height: 4)
+            }
+            if let n = s.network {
+                ThinRow(title: "Network", value: "↓ \(Format.rate(n.downBytesPerSec)) ↑ \(Format.rate(n.upBytesPerSec))", level: .good, open: nil) {
+                    ZStack {
+                        Sparkline(values: down.map { $0 / top }, color: Palette.blue, filled: false, slots: Self.buckets)
+                        Sparkline(values: up.map { $0 / top }, color: Palette.orange, filled: false, slots: Self.buckets)
+                    }.frame(height: 16)
+                }
+            }
+            if let b = s.battery {
+                let level: HealthLevel = !b.onPower && b.percent <= 10 ? .critical : (!b.onPower && b.percent <= 20 ? .warning : .good)
+                let state = b.isCharging ? "charging" : (b.onPower ? "plugged in" : (b.minutesRemaining.map { Format.duration(minutes: $0) + " left" } ?? "on battery"))
+                ThinRow(title: "Battery", value: "\(b.percent)% · \(state)", level: level, open: nil) {
+                    Meter(fraction: Double(b.percent) / 100, level: level).frame(height: 4)
+                }
+            }
         }
+        .padding(.horizontal, 12).padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.primary.opacity(0.055)))
     }
 
     /// Stretches a slowly moving series over the graph's height, never by less than `minSpan`, so small changes
@@ -120,14 +126,14 @@ private struct OverviewCard<Graph: View>: View {
     var body: some View {
         let content = VStack(alignment: .leading, spacing: 2) {
             Text(title).font(Typo.small).foregroundStyle(.secondary)
-            Text(value).font(Typo.number).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
+            Text(value).font(Font.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
                 .foregroundStyle(level == .good ? Color.primary : Palette.text(level))
             caption.font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
             Spacer(minLength: 4)
-            graph.frame(height: 28)
+            graph.frame(height: 22)
         }
-        .frame(maxWidth: .infinity, minHeight: 112, maxHeight: 112, alignment: .leading)
-        .padding(.horizontal, 12).padding(.vertical, 10)
+        .frame(maxWidth: .infinity, minHeight: 92, maxHeight: 92, alignment: .leading)
+        .padding(.horizontal, 12).padding(.vertical, 8)
         .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.primary.opacity(0.055)))
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .ignore)
@@ -136,38 +142,25 @@ private struct OverviewCard<Graph: View>: View {
     }
 }
 
-private struct BatteryCard: View {
-    let battery: BatteryReading
+/// One line: name, a small bar or graph, and the value.
+private struct ThinRow<Graph: View>: View {
+    let title: String
+    let value: String
+    let level: HealthLevel
+    let open: (() -> Void)?
+    @ViewBuilder var graph: Graph
 
     var body: some View {
-        let level: HealthLevel = !battery.onPower && battery.percent <= 10 ? .critical : (!battery.onPower && battery.percent <= 20 ? .warning : .good)
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Battery").font(Typo.small).foregroundStyle(.secondary)
-                Spacer()
-                Text(state).font(Typo.small).foregroundStyle(.secondary)
-            }
-            HStack(alignment: .center, spacing: 10) {
-                Text("\(battery.percent)%").font(Typo.number).monospacedDigit()
-                    .foregroundStyle(level == .good ? Color.primary : Palette.text(level))
-                Meter(fraction: Double(battery.percent) / 100, level: level).frame(height: 6)
-            }
-            Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+        let row = HStack(spacing: 10) {
+            Text(title).font(Typo.small).foregroundStyle(.secondary).frame(width: 52, alignment: .leading)
+            graph.frame(maxWidth: .infinity)
+            Text(value).font(Typo.small).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                .foregroundStyle(level == .good ? Color.primary : Palette.text(level))
+                .frame(minWidth: 150, alignment: .trailing).layoutPriority(1)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12).padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.primary.opacity(0.055)))
+        .frame(height: 30).contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Battery, \(battery.percent) percent, \(state). \(detail)")
-    }
-
-    private var state: String { battery.isCharging ? "Charging" : (battery.onPower ? "Plugged in" : "On battery") }
-
-    private var detail: String {
-        var parts: [String] = []
-        if let m = battery.minutesRemaining { parts.append((battery.isCharging ? "Full in " : "") + Format.duration(minutes: m) + (battery.isCharging ? "" : " left")) }
-        if let w = battery.watts, !battery.onPower || battery.isCharging { parts.append(String(format: "%@ %.1f W", battery.isCharging ? "Charging at" : "Using", w)) }
-        if let h = battery.healthFraction { parts.append("Health " + Format.percent(h)) }
-        return parts.isEmpty ? " " : parts.joined(separator: " · ")
+        .accessibilityLabel("\(title), \(value)")
+        if let open { Button(action: open) { row }.buttonStyle(.plain).focusEffectDisabled() } else { row }
     }
 }

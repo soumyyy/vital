@@ -16,12 +16,21 @@ final class StorageStore: ObservableObject {
     private var generation = 0
     private var cancelFlag: AtomicFlag?
     private let names = StorageSampler.defaultDefinitions().map(\.name)
+    private static let consentKey = "vital.storage.consented"
+    /// Personal folders the user chose to scan. macOS asks for permission only when one of these is scanned.
+    @Published private(set) var consented: Set<String> = Set(UserDefaults.standard.stringArray(forKey: StorageStore.consentKey) ?? [])
+
+    private var split: (scan: [CategoryDefinition], skipped: [String]) {
+        StorageSampler.partition(StorageSampler.defaultDefinitions(), consented: consented)
+    }
+    private var eligibleNames: [String] { split.scan.map(\.name) }
 
     /// Called when the Storage tab is shown. Starts or resumes a scan unless the cache is fresh.
     func ensureFresh(busy: Bool) {
         capacity = StorageSampler.capacity() ?? capacity
         guard !scanning else { return }
-        let toScan = StorageCache.namesToScan(cached: breakdown, allNames: names, now: Date())
+        breakdown = (breakdown ?? .waiting(names: names)).marking(skipped: Set(split.skipped))
+        let toScan = StorageCache.namesToScan(cached: breakdown, allNames: eligibleNames, now: Date())
         if !toScan.isEmpty { start(toScan, busy: busy) }
     }
 
@@ -29,7 +38,17 @@ final class StorageStore: ObservableObject {
     func rescan(busy: Bool) {
         capacity = StorageSampler.capacity() ?? capacity
         stop()
-        start(names, busy: busy)
+        breakdown = (breakdown ?? .waiting(names: names)).marking(skipped: Set(split.skipped))
+        start(eligibleNames, busy: busy)
+    }
+
+    /// The user chose to include a personal folder (Documents, Downloads, Photos...). macOS may now ask once.
+    func allow(_ name: String, busy: Bool) {
+        consented.insert(name)
+        UserDefaults.standard.set(Array(consented), forKey: Self.consentKey)
+        breakdown = (breakdown ?? .waiting(names: names)).marking(skipped: Set(split.skipped))
+        if scanning { return }          // picked up by the next scan
+        start([name], busy: busy)
     }
 
     /// Called when the panel closes. Keeps finished categories; unfinished ones go back to waiting.

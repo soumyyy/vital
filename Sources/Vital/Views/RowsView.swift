@@ -45,7 +45,7 @@ struct RowsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .font(.system(size: 11)).foregroundStyle(.secondary).monospacedDigit()
                 } else {
-                    header("CPU", "Sampling…")
+                    header("CPU", "Loading…")
                     Color.clear.frame(height: 28)
                 }
             }

@@ -144,3 +144,39 @@ private func makeTree() throws -> String {
     let system = StorageSampler.defaultDefinitions().first { $0.name == "System" }!
     #expect(system.excludePaths.contains("/System/Volumes"))
 }
+
+@Test func personalFoldersNeedConsent() {
+    let defs = StorageSampler.defaultDefinitions()
+    let needing = Set(defs.filter(\.requiresConsent).map(\.name))
+    #expect(needing == ["Documents", "Desktop and Downloads", "Photos, Music and Movies"])
+    let none = StorageSampler.partition(defs, consented: [])
+    #expect(!none.scan.contains { $0.requiresConsent })
+    #expect(Set(none.skipped) == needing)
+    let some = StorageSampler.partition(defs, consented: ["Documents"])
+    #expect(some.scan.contains { $0.name == "Documents" })
+    #expect(!some.skipped.contains("Documents"))
+}
+
+@Test func defaultScanNeverEntersAppDataOrPersonalFolders() {
+    let home = "/Users/test"
+    let defs = StorageSampler.defaultDefinitions(home: home)
+    let allowed = StorageSampler.partition(defs, consented: []).scan
+    let roots = allowed.flatMap(\.roots)
+    for guarded in ["/Documents", "/Desktop", "/Downloads", "/Pictures", "/Music", "/Movies"] {
+        #expect(!roots.contains(home + guarded))
+    }
+    let library = defs.first { $0.name == "Library" }!
+    for folder in ["Containers", "Group Containers", "Mobile Documents", "Mail", "Messages", "Safari", "Photos"] {
+        #expect(library.excludePaths.contains(home + "/Library/" + folder))
+    }
+    #expect(!defs.first { $0.name == "Docker and VMs" }!.roots.contains { $0.contains("/Containers") })
+}
+
+@Test func skippedCategoriesAreNotCountedAndCompleteTheScan() {
+    var b = StorageBreakdown.waiting(names: ["A", "B"]).marking(skipped: ["B"])
+    b.categories[0] = StorageCategory(name: "A", bytes: 100, top: [], status: .done, scannedAt: Date())
+    #expect(b.isComplete && b.hasSkipped && b.scannableCount == 1 && b.doneCount == 1)
+    #expect(b.otherBytes(usedBytes: 150) == 50)
+    let back = b.marking(skipped: [])
+    #expect(back.categories[1].status == .waiting)
+}

@@ -18,7 +18,9 @@ public struct FolderUsage: Sendable, Identifiable, Equatable {
     public init(path: String, bytes: UInt64) { self.path = path; self.bytes = bytes }
 }
 
-public enum ScanStatus: Sendable, Equatable { case waiting, scanning, done }
+/// `skipped`: a category in a protected personal folder (Documents, Downloads, Photos...) that is not read
+/// until the user chooses to scan it, so macOS does not ask for permission unprompted.
+public enum ScanStatus: Sendable, Equatable { case waiting, scanning, done, skipped }
 
 public struct StorageCategory: Sendable, Identifiable {
     public var name: String
@@ -43,7 +45,9 @@ public struct StorageBreakdown: Sendable {
     }
 
     public var partial: Bool { categories.contains { $0.partial } }
-    public var isComplete: Bool { categories.allSatisfy { $0.status == .done } }
+    public var isComplete: Bool { categories.allSatisfy { $0.status == .done || $0.status == .skipped } }
+    public var scannableCount: Int { categories.filter { $0.status != .skipped }.count }
+    public var hasSkipped: Bool { categories.contains { $0.status == .skipped } }
     public var doneCount: Int { categories.filter { $0.status == .done }.count }
 
     /// Used space that no finished category accounts for: system data, snapshots, swap, and unreadable folders.
@@ -65,6 +69,20 @@ public struct StorageBreakdown: Sendable {
             if let i = out.firstIndex(where: { $0.name == c.name }) { out[i] = c } else { out.append(c) }
         }
         return StorageBreakdown(categories: out, scannedAt: max(scannedAt, update.scannedAt))
+    }
+
+    /// Marks the named categories as skipped (not scanned until the user asks).
+    public func marking(skipped names: Set<String>) -> StorageBreakdown {
+        var b = self
+        for i in b.categories.indices {
+            let c = b.categories[i]
+            if names.contains(c.name) {
+                if c.status != .skipped { b.categories[i] = StorageCategory(name: c.name, bytes: 0, top: [], status: .skipped) }
+            } else if c.status == .skipped {
+                b.categories[i] = StorageCategory(name: c.name, bytes: 0, top: [], status: .waiting)
+            }
+        }
+        return b
     }
 
     /// Marks the given categories as waiting again (for a rescan), keeping the others.
@@ -98,8 +116,11 @@ public struct CategoryDefinition: Sendable {
     public var name: String
     public var roots: [String]
     public var excludePaths: Set<String>
-    public init(name: String, roots: [String], excludePaths: Set<String> = []) {
-        self.name = name; self.roots = roots; self.excludePaths = excludePaths
+    /// True for folders macOS protects with a permission prompt (Documents, Desktop, Downloads, Photos,
+    /// Music, Movies). They are only read after the user opts in.
+    public var requiresConsent: Bool
+    public init(name: String, roots: [String], excludePaths: Set<String> = [], requiresConsent: Bool = false) {
+        self.name = name; self.roots = roots; self.excludePaths = excludePaths; self.requiresConsent = requiresConsent
     }
 }
 
@@ -127,23 +148,39 @@ public enum StorageSampler {
     /// about 1,000 entries and 0 bytes on disk. They are skipped.
     public static func cloudStoragePath(home: String = NSHomeDirectory()) -> String { home + "/Library/CloudStorage" }
 
+    /// Splits definitions into those that may be scanned now and the names of those waiting for the user's consent.
+    public static func partition(_ defs: [CategoryDefinition], consented: Set<String>)
+        -> (scan: [CategoryDefinition], skipped: [String]) {
+        let scan = defs.filter { !$0.requiresConsent || consented.contains($0.name) }
+        let skipped = defs.filter { $0.requiresConsent && !consented.contains($0.name) }.map(\.name)
+        return (scan, skipped)
+    }
+
+    /// Folders that other apps own or that macOS guards with a prompt ("Vital would like to access data from
+    /// other apps", iCloud Drive). They are never walked, so the scan triggers no permission dialog. Their
+    /// size shows up under Other.
+    public static func privateLibraryFolders(home: String = NSHomeDirectory()) -> Set<String> {
+        let lib = home + "/Library"
+        return Set(["Containers", "Group Containers", "Mobile Documents", "Mail", "Messages", "Safari",
+                    "Photos", "Calendars", "Reminders"].map { lib + "/" + $0 })
+    }
+
     public static func defaultDefinitions(home: String = NSHomeDirectory()) -> [CategoryDefinition] {
         let lib = home + "/Library"
         let caches = lib + "/Caches", dev = lib + "/Developer"
         let cloud = cloudStoragePath(home: home)
-        let docker: [String] = [home + "/.docker", lib + "/Containers/com.docker.docker",
-                                lib + "/Group Containers/group.com.docker", home + "/Virtual Machines.localized",
-                                home + "/Parallels"]
+        // Docker Desktop's disk image lives in ~/Library/Containers, which macOS guards, so it is not read.
+        let docker: [String] = [home + "/.docker", home + "/Virtual Machines.localized", home + "/Parallels"]
         let developer: [String] = [dev, home + "/.cache", home + "/.npm", home + "/.cargo",
                                    home + "/.rustup", home + "/.gradle", home + "/.m2", home + "/.cocoapods"]
-        let claimed = Set([caches, cloud] + developer + docker)
+        let claimed = Set([caches, cloud] + developer + docker).union(privateLibraryFolders(home: home))
         let homeClaimed = Set([lib, home + "/Documents", home + "/Desktop", home + "/Downloads", home + "/Movies",
                                home + "/Music", home + "/Pictures", home + "/Applications"] + developer + docker)
         return [
             CategoryDefinition(name: "Applications", roots: ["/Applications", home + "/Applications"]),
-            CategoryDefinition(name: "Documents", roots: [home + "/Documents"]),
-            CategoryDefinition(name: "Desktop and Downloads", roots: [home + "/Desktop", home + "/Downloads"]),
-            CategoryDefinition(name: "Media", roots: [home + "/Movies", home + "/Music", home + "/Pictures"]),
+            CategoryDefinition(name: "Documents", roots: [home + "/Documents"], requiresConsent: true),
+            CategoryDefinition(name: "Desktop and Downloads", roots: [home + "/Desktop", home + "/Downloads"], requiresConsent: true),
+            CategoryDefinition(name: "Photos, Music and Movies", roots: [home + "/Pictures", home + "/Music", home + "/Movies"], requiresConsent: true),
             CategoryDefinition(name: "Developer tools", roots: developer),
             CategoryDefinition(name: "Docker and VMs", roots: docker),
             CategoryDefinition(name: "Caches", roots: [caches]),

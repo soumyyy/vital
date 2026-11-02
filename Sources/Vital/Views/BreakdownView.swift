@@ -30,7 +30,7 @@ struct BreakdownView: View {
         if model.tab == .storage {
             StorageBreakdownView(model: model)
         } else if !model.snapshot.hasProcessData {
-            VStack { ProgressView().controlSize(.small); Text("Sampling…").font(.system(size: 11)).foregroundStyle(.secondary) }
+            VStack { ProgressView().controlSize(.small); Text("Loading…").font(.system(size: 11)).foregroundStyle(.secondary) }
                 .frame(maxWidth: .infinity, minHeight: 80)
         } else {
             let groups = Array(model.ranked.prefix(12))
@@ -216,7 +216,7 @@ struct StorageBreakdownView: View {
 
     /// Finished categories by size, then the one being scanned, then those waiting.
     private func ordered(_ cats: [StorageCategory]) -> [StorageCategory] {
-        let rank: (ScanStatus) -> Int = { $0 == .done ? 0 : ($0 == .scanning ? 1 : 2) }
+        let rank: (ScanStatus) -> Int = { $0 == .done ? 0 : ($0 == .scanning ? 1 : ($0 == .waiting ? 2 : 3)) }
         return cats.enumerated().sorted { a, b in
             let ra = rank(a.element.status), rb = rank(b.element.status)
             if ra != rb { return ra < rb }
@@ -229,9 +229,9 @@ struct StorageBreakdownView: View {
         VStack(alignment: .leading, spacing: 6) {
             if store.fullDiskAccess == false {
                 VStack(alignment: .leading, spacing: 4) {
-                    Label("Some folders need Full Disk Access", systemImage: "lock.fill")
+                    Label("Optional: Full Disk Access", systemImage: "lock.fill")
                         .font(.system(size: 11, weight: .medium))
-                    Text("Mail, Messages, Safari and other apps' data cannot be read, so they count toward Other. Grant access, then reopen Vital.")
+                    Text("Vital works without it. Mail, Messages, Safari and other apps' data count toward Other. Grant access only if you want those measured, then reopen Vital.")
                         .font(.system(size: 10)).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     Button("Open Privacy Settings") {
@@ -244,6 +244,11 @@ struct StorageBreakdownView: View {
             } else if b.partial && b.isComplete {
                 Text("Some system folders are readable only by macOS. They count toward Other.")
                     .font(.system(size: 10)).foregroundStyle(.secondary)
+            }
+            if b.hasSkipped {
+                Text("Documents, Downloads, Photos and similar folders are not opened unless you tap Scan, so macOS does not ask for permission.")
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Text("Cloud drives (Library/CloudStorage) are skipped: their files are mostly online-only.")
                 .font(.system(size: 10)).foregroundStyle(.tertiary)
@@ -273,7 +278,7 @@ struct CapacityCard: View {
             HStack(spacing: 6) {
                 if store.scanning {
                     ProgressView().controlSize(.mini)
-                    Text("Measuring folders · \(store.breakdown?.doneCount ?? 0) of \(store.breakdown?.categories.count ?? 0) done")
+                    Text("Measuring folders · \(store.breakdown?.doneCount ?? 0) of \(store.breakdown?.scannableCount ?? 0) done")
                 } else if let b = store.breakdown, b.isComplete {
                     Text("Folders measured \(ago(b.scannedAt))")
                 } else {
@@ -311,7 +316,7 @@ struct CategoryRow: View {
             } label: {
                 HStack(spacing: 6) {
                     Text(category.name).font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(category.status == .waiting ? .secondary : .primary)
+                        .foregroundStyle(category.status == .waiting || category.status == .skipped ? .secondary : .primary)
                     if category.partial && category.status == .done {
                         Image(systemName: "lock.fill").font(.system(size: 9)).foregroundStyle(.tertiary)
                             .help("Some folders here could not be read")
@@ -354,6 +359,10 @@ struct CategoryRow: View {
                 ProgressView().controlSize(.mini)
                 Text(Format.bytes(category.bytes, base: .decimal) + "…").font(.system(size: 12)).foregroundStyle(.secondary).monospacedDigit()
             }
+        case .skipped:
+            Button("Scan") { model.storage.allow(category.name, busy: model.snapshot.band != .calm) }
+                .buttonStyle(PillButton())
+                .help("macOS will ask once for permission to read this folder")
         case .done:
             if category.bytes == 0 && category.partial {
                 Text("Not readable").font(.system(size: 11)).foregroundStyle(.secondary)
@@ -367,6 +376,7 @@ struct CategoryRow: View {
         switch category.status {
         case .waiting: return "waiting"
         case .scanning: return "measuring, \(Format.bytes(category.bytes, base: .decimal)) so far"
+        case .skipped: return "not scanned, private folder. Choose Scan to include it"
         case .done: return Format.bytes(category.bytes, base: .decimal) + (category.partial ? ", partial" : "")
         }
     }

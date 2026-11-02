@@ -34,6 +34,7 @@ struct BreakdownView: View {
                 .frame(maxWidth: .infinity, minHeight: 80)
         } else {
             let groups = Array(model.ranked.prefix(12))
+            if model.tab == .heat { FanCard(model: model) }
             VStack(spacing: 0) {
                 ForEach(groups) { g in
                     GroupRow(model: model, group: g)
@@ -66,7 +67,12 @@ struct GroupRow: View {
                         Text(subtitle).font(.system(size: 10)).foregroundStyle(hung ? Palette.red : .secondary)
                     }
                     Spacer(minLength: 4)
-                    Text(value).font(.system(size: 12)).monospacedDigit()
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(value).font(.system(size: 12, weight: .medium)).monospacedDigit()
+                        if let detail = valueDetail {
+                            Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).monospacedDigit()
+                        }
+                    }
                     if !group.processes.isEmpty {
                         Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(.tertiary).rotationEffect(.degrees(isOpen ? 90 : 0))
@@ -92,13 +98,18 @@ struct GroupRow: View {
 
     private var value: String {
         switch model.tab {
-        case .cpu: return group.isAggregate ? "≈ \(percent(group.cpuCores))" : percent(group.cpuCores)
+        case .cpu: return (group.isAggregate ? "≈ " : "") + Format.cpuShare(cores: group.cpuCores, coreCount: coreCount)
         case .memory: return (group.isAggregate ? "≈ " : "") + Format.bytes(group.footprintBytes, base: .binary)
         case .heat: return group.watts.map { String(format: "%.1f W", $0) } ?? "n/a"
         case .storage: return ""
         }
     }
-    private func percent(_ cores: Double) -> String { "\(Int((cores * 100).rounded()))%" }
+    private var coreCount: Int { model.snapshot.cpu?.perCore.count ?? 1 }
+
+    /// Second line: the same load as Activity Monitor would show it (100% = one core).
+    private var valueDetail: String? {
+        model.tab == .cpu ? Format.ofOneCore(group.cpuCores) : nil
+    }
 
     private var expanded: some View {
         VStack(spacing: 4) {
@@ -138,7 +149,7 @@ struct GroupRow: View {
 
     private func processValue(_ p: ProcessRow) -> String {
         switch model.tab {
-        case .cpu: return percent(p.cpuCores)
+        case .cpu: return "\(Format.cpuShare(cores: p.cpuCores, coreCount: coreCount)) · \(Int((p.cpuCores * 100).rounded()))%"
         case .memory: return Format.bytes(p.footprintBytes, base: .binary)
         case .heat: return p.watts.map { String(format: "%.1f W", $0) } ?? "n/a"
         case .storage: return ""

@@ -19,3 +19,12 @@ import Testing
     #expect(Format.percent(-0.1) == "0%")
     #expect(Format.rpm(2100) == "2,100 rpm")
 }
+
+@Test func cpuShareFormats() {
+    #expect(Format.cpuShare(cores: 1.85, coreCount: 8) == "23%")
+    #expect(Format.cpuShare(cores: 0.01, coreCount: 8) == "<1%")
+    #expect(Format.cpuShare(cores: 0, coreCount: 8) == "0%")
+    #expect(Format.ofOneCore(1.85) == "185% of a core")
+    #expect(Format.coresInUse(2.7, of: 8) == "2.7 of 8 cores")
+    #expect(Format.coresInUse(12, of: 8) == "8.0 of 8 cores")
+}

@@ -18,6 +18,12 @@ public struct CPUReading: Sendable {
 }
 
 public enum CPUMath {
+    /// Share of the whole CPU (0...1) that `cores` busy cores represent. 1.85 cores on 8 cores is about 0.23.
+    public static func shareOfTotal(cores: Double, coreCount: Int) -> Double {
+        guard coreCount > 0 else { return 0 }
+        return min(1, max(0, cores / Double(coreCount)))
+    }
+
     /// Per-core busy fractions from two tick snapshots. Uses wrapping subtraction (ticks are UInt32).
     /// Returns nil when the snapshots are unusable (different core counts, or no time elapsed on any core).
     public static func usage(prev: [CoreTicks], cur: [CoreTicks]) -> [Double]? {

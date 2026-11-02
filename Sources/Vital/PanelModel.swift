@@ -41,6 +41,7 @@ final class PanelModel: ObservableObject {
     private let appState: AppState
     private let actions = ProcessActions()
     var storage: StorageStore { appState.storage }
+    var fanAvailability: FanControlAvailability { appState.fanController.availability }
     private var toastTask: Task<Void, Never>?
 
     init(appState: AppState) {
@@ -132,6 +133,16 @@ final class PanelModel: ObservableObject {
             if !Task.isCancelled { self?.toast = nil }
         }
     }
+
+    // MARK: refresh
+
+    /// Takes a fresh sample of everything now; on the Storage tab it also rescans the folders.
+    func refresh() {
+        appState.sampler.refreshNow()
+        if tab == .storage { storage.rescan(busy: snapshot.band != .calm) }
+    }
+
+    var isRefreshing: Bool { tab == .storage && storage.scanning }
 
     // MARK: storage
 

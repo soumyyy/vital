@@ -16,7 +16,7 @@ struct PanelView: View {
             .frame(maxHeight: .infinity)
             if let p = model.pending { ConfirmBar(model: model, pending: p) }
             else if let t = model.toast { ToastBar(text: t) }
-            FooterView()
+            FooterView(model: model, storage: model.storage)
         }
         .padding(14)
         .frame(width: 340, height: 620)
@@ -89,11 +89,24 @@ struct ToastBar: View {
 }
 
 struct FooterView: View {
+    @ObservedObject var model: PanelModel
+    @ObservedObject var storage: StorageStore
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+
     var body: some View {
-        HStack {
+        HStack(spacing: 10) {
             Text("Vital").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
             Spacer()
+            Button { model.refresh() } label: {
+                ZStack {
+                    if model.isRefreshing { ProgressView().controlSize(.small).scaleEffect(0.7) }
+                    else { Image(systemName: "arrow.clockwise") }
+                }
+                .frame(width: 18, height: 18).foregroundStyle(.secondary).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).focusEffectDisabled()
+            .help(model.tab == .storage ? "Refresh and rescan storage" : "Refresh now")
+            .accessibilityLabel(model.tab == .storage ? "Refresh and rescan storage" : "Refresh now")
             Menu {
                 Toggle("Launch at login", isOn: Binding(get: { launchAtLogin }, set: { setLaunchAtLogin($0) }))
                 Divider()

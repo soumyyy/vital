@@ -33,9 +33,17 @@ struct RowsView: View {
         tappable(.cpu) {
             VStack(spacing: 6) {
                 if let c = model.snapshot.cpu {
-                    let split = c.eCount + c.pCount > 0 ? "\(c.eCount)E + \(c.pCount)P · " : ""
-                    header("CPU", "\(split)\(Format.percent(c.total))")
+                    let cores = c.perCore.count
+                    header("CPU", "\(cores) cores · \(Format.percent(c.total)) used")
                     Sparkline(values: model.history, color: Palette.level(c.total)).frame(height: 28)
+                    HStack {
+                        Text("Using \(Format.coresInUse(c.total * Double(cores), of: cores))")
+                        Spacer()
+                        if let p = c.performance, let e = c.efficiency {
+                            Text("Performance \(Format.percent(p)) · Efficiency \(Format.percent(e))")
+                        }
+                    }
+                    .font(.system(size: 11)).foregroundStyle(.secondary).monospacedDigit()
                 } else {
                     header("CPU", "Sampling…")
                     Color.clear.frame(height: 28)

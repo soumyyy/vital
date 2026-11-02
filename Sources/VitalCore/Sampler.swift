@@ -13,6 +13,7 @@ public final class Sampler {
 
     private let cpu = CPUSampler()
     private let processes = ProcessSampler()
+    private var smoother = CPUSmoother()
     private var load = LoadEvaluator()
     private var lastSwap: (bytes: UInt64, time: Date)?
     private var lastStorage: (reading: StorageReading, time: Date)?
@@ -45,12 +46,15 @@ public final class Sampler {
         }
     }
 
+    /// Takes a fresh sample right now (the panel's refresh button). Skipped if a tick is already running.
+    public func refreshNow() { queue.async { [self] in if running { tick() } } }
+
     public func setMode(_ newMode: SamplerMode) {
         queue.async { [self] in
             guard newMode != mode else { return }
             mode = newMode
             multiplier = 1
-            if newMode == .closed { processes.reset(); primedProcesses = false }
+            if newMode == .closed { processes.reset(); smoother.resetProcesses(); primedProcesses = false }
             if running { scheduleTimer(); tick() }
         }
     }
@@ -74,7 +78,7 @@ public final class Sampler {
             self?.queue.async {
                 guard let self, self.running else { return }
                 // Counters are meaningless across sleep: drop all deltas and start clean.
-                self.cpu.reset(); self.processes.reset(); self.primedProcesses = false; self.lastSwap = nil
+                self.cpu.reset(); self.processes.reset(); self.smoother.reset(); self.primedProcesses = false; self.lastSwap = nil
                 self.scheduleTimer(); self.tick()
             }
         }
@@ -91,7 +95,8 @@ public final class Sampler {
         let started = Date()
         defer { gate.end() }
 
-        let cpuReading = cpu.sample()
+        let rawCPU = cpu.sample()
+        let cpuReading = rawCPU.map { smoother.smooth($0, at: started) }
         let memory = MemorySampler.sample()
         let open = mode == .open
 
@@ -118,6 +123,7 @@ public final class Sampler {
             var sample = processes.sample()
             let me = getpid()
             sample.rows.removeAll { $0.pid == me }       // Vital never lists itself
+            sample.rows = smoother.smooth(rows: sample.rows, at: started)
             hasProcessData = primedProcesses
             primedProcesses = true
             if hasProcessData {
@@ -131,7 +137,7 @@ public final class Sampler {
             }
         }
 
-        let band = load.update(LoadInput(cpu: cpuReading?.total ?? 0,
+        let band = load.update(LoadInput(cpu: rawCPU?.total ?? 0,
                                          pressure: memory?.pressure ?? .normal,
                                          swapGrowthBytesPerSec: swapGrowth,
                                          thermal: thermal.state), at: started)

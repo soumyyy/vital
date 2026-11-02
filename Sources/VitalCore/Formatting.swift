@@ -26,4 +26,19 @@ public enum Format {
         f.maximumFractionDigits = 0
         return "\(f.string(from: NSNumber(value: v)) ?? "\(Int(v))") rpm"
     }
+
+    /// Share of the whole CPU, for example "23%". Anything above zero but under 1% reads "<1%".
+    public static func cpuShare(cores: Double, coreCount: Int) -> String {
+        let share = CPUMath.shareOfTotal(cores: cores, coreCount: coreCount)
+        if share > 0 && share < 0.005 { return "<1%" }
+        return "\(Int((share * 100).rounded()))%"
+    }
+
+    /// Activity Monitor style: 100% is one full core, so a busy app can read above 100%.
+    public static func ofOneCore(_ cores: Double) -> String { "\(Int((max(0, cores) * 100).rounded()))% of a core" }
+
+    /// "2.7 of 8 cores"
+    public static func coresInUse(_ cores: Double, of count: Int) -> String {
+        String(format: "%.1f of %d cores", min(max(0, cores), Double(count)), count)
+    }
 }

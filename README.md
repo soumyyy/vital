@@ -9,6 +9,12 @@
 A lean menu bar monitor for Apple Silicon Macs ([website](https://soumyyy.github.io/vital/)). It answers one question: **what is eating my Mac right now, and can I stop it?**
 
 <p align="center">
+  <a href="docs/vital-demo.mp4"><img src="docs/images/demo-poster.jpg" alt="Play the 45-second Vital demo video" width="640"></a>
+  <br>
+  <sub><a href="docs/vital-demo.mp4">Watch the 45-second demo</a></sub>
+</p>
+
+<p align="center">
   <img src="docs/images/overview.png" alt="Vital Overview: CPU, memory, disk and heat graphs, with storage, network and battery below" width="300">
   &nbsp;&nbsp;
   <img src="docs/images/apps.png" alt="Vital Memory view: Memory is getting full, Dia is using the most, with a Quit button and the apps ranked by memory" width="300">

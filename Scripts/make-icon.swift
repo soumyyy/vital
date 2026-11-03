@@ -1,5 +1,5 @@
-// Renders Vital's app icon into an .iconset folder: a bold white heartbeat line on a frosted glass tile,
-// on a blue-violet continuous-corner squircle with a light glass rim. Same motif as the menu bar glyph.
+// Renders Vital's app icon into an .iconset folder: a bold white heartbeat line on a graphite
+// continuous-corner squircle with a light glass rim. Same motif as the menu bar glyph.
 // Usage: swift Scripts/make-icon.swift build/AppIcon.iconset && iconutil -c icns build/AppIcon.iconset -o Resources/AppIcon.icns
 import AppKit
 
@@ -62,17 +62,6 @@ func render(pixels: Int) -> NSBitmapImageRep {
         .draw(fromCenter: NSPoint(x: 300, y: 900), radius: 0, toCenter: NSPoint(x: 300, y: 900), radius: 640, options: [])
     NSGraphicsContext.restoreGraphicsState()
     rim(squircle(body.insetBy(dx: 3, dy: 3)), width: 6, in: body, top: 0.7, bottom: 0.05)
-
-    // Frosted glass tile.
-    let tileRect = NSRect(x: 212, y: 232, width: 600, height: 560)
-    let tile = NSBezierPath(roundedRect: tileRect, xRadius: 150, yRadius: 150)
-    shadow(0.22, blur: 40, dy: -18) { NSColor.white.withAlphaComponent(0.20).setFill(); tile.fill() }
-    NSGraphicsContext.saveGraphicsState()
-    tile.addClip()
-    NSGradient(colors: [NSColor.white.withAlphaComponent(0.28), NSColor.white.withAlphaComponent(0.02)])!
-        .draw(in: tileRect, angle: -90)
-    NSGraphicsContext.restoreGraphicsState()
-    rim(tile, width: 5, in: tileRect, top: 0.85, bottom: 0.1)
 
     // Heartbeat line.
     let y: CGFloat = 512

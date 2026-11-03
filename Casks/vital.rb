@@ -1,6 +1,6 @@
 cask "vital" do
-  version "0.1.4"
-  sha256 "c266ab058679e0789b9e88d31617f3595094360d4a2cee724645103a8523f7bd"
+  version "0.1.5"
+  sha256 "9c2966f9d938b6512f86cc2f3fd645359771a941144a530a579cbd4e2788bcb1"
 
   url "https://github.com/soumyyy/vital/releases/download/v#{version}/Vital.dmg"
   name "Vital"
@@ -16,6 +16,7 @@ cask "vital" do
   depends_on macos: :sonoma
 
   app "Vital.app"
+  binary "#{appdir}/Vital.app/Contents/MacOS/Vital", target: "vital"
 
   # A menu bar app has no window to open, so start it: the icon appears at once.
   postflight do

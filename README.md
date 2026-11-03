@@ -21,7 +21,8 @@ Download **Vital.dmg** from the [latest release](https://github.com/soumyyy/vita
 Or with Homebrew:
 
 ```sh
-brew tap soumyyy/vital https://github.com/soumyyy/vital && brew install --cask vital
+brew tap soumyyy/vital https://github.com/soumyyy/vital
+brew install --cask soumyyy/vital/vital
 ```
 
 Or with npm: `npx vital-mac install` downloads the notarized release, verifies its checksum and installs it.

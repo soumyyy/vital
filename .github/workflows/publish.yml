@@ -24,6 +24,7 @@ jobs:
       - name: Audit the cask
         run: |
           brew tap soumyyy/vital "$GITHUB_WORKSPACE"
+          brew trust --tap soumyyy/vital
           brew style --cask --except-cops Cask/InstallSteps soumyyy/vital/vital
           brew audit --cask --online soumyyy/vital/vital
       - name: Commit

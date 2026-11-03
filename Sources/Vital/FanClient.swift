@@ -64,6 +64,9 @@ final class FanClient: ObservableObject {
     // MARK: keeping the helper current
 
     private static let helperBuildKey = "vital.fan.helperBuild"
+    /// Set once fan control has worked, so a registration lost to `brew upgrade` or a reinstall (Homebrew unregisters
+    /// the helper on both) comes back at the next launch without a click. macOS keeps the approval across it.
+    private static let wantedKey = "vital.fan.wanted"
 
     /// Restarts the helper when it is not the one bundled with this app. Copying a new Vital over the old one
     /// (a DMG drag, Homebrew, a restore) leaves the previous helper process running, and it refuses the new app.
@@ -71,13 +74,21 @@ final class FanClient: ObservableObject {
     /// `force` does it even when the recorded build matches, for a helper that no longer answers.
     static func repairHelper(force: Bool = false) async {
         guard FanService.registrationError() == nil else { return }       // only the signed copy in /Applications
+        let defaults = UserDefaults.standard
         let service = SMAppService.daemon(plistName: FanService.plist)
-        guard service.status == .enabled, let build = FanService.bundledHelperBuild() else { return }
-        if !force, UserDefaults.standard.string(forKey: helperBuildKey) == build { return }
+        guard let build = FanService.bundledHelperBuild() else { return }
+        if service.status == .notRegistered, defaults.bool(forKey: wantedKey) {
+            try? service.register()                                         // approved before, so this does not prompt
+            if service.status == .enabled { defaults.set(build, forKey: helperBuildKey) }
+            return
+        }
+        guard service.status == .enabled else { return }
+        defaults.set(true, forKey: wantedKey)
+        if !force, defaults.string(forKey: helperBuildKey) == build { return }
         do { try await service.unregister() } catch { return }
         try? await Task.sleep(for: .seconds(1))
         try? service.register()
-        if service.status == .enabled { UserDefaults.standard.set(build, forKey: helperBuildKey) }
+        if service.status == .enabled { defaults.set(build, forKey: helperBuildKey) }
     }
 
     /// Runs at launch, before any connection is made.
@@ -118,6 +129,7 @@ final class FanClient: ObservableObject {
             SMAppService.openSystemSettingsLoginItems()
         case .enabled:
             error = nil
+            UserDefaults.standard.set(true, forKey: Self.wantedKey)
             if unreachable {
                 // The helper is registered but not answering: restart it, then connect again.
                 unreachable = false

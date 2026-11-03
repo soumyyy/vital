@@ -1,0 +1,64 @@
+name: Publish
+# Runs when a GitHub release is published. The release itself (signing, notarizing, uploading the DMG and ZIP)
+# is built on the maintainer's Mac with Scripts/release.sh; this fans the new version out to Homebrew and npm.
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+jobs:
+  cask:
+    if: ${{ !github.event.release.prerelease && startsWith(github.event.release.tag_name, 'v') }}
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - name: Point the cask at this release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: Scripts/update-cask.sh "${TAG#v}"
+      - name: Audit the cask
+        run: |
+          brew tap soumyyy/vital "$GITHUB_WORKSPACE"
+          brew style --cask --except-cops Cask/InstallSteps soumyyy/vital/vital
+          brew audit --cask --online soumyyy/vital/vital
+      - name: Commit
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          git diff --quiet Casks/vital.rb && { echo "Cask already at ${TAG#v}"; exit 0; }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Cask: ${TAG#v}" Casks/vital.rb
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+  npm:
+    if: ${{ !github.event.release.prerelease && startsWith(github.event.release.tag_name, 'v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write            # npm trusted publishing: no stored token
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Use an npm that supports trusted publishing
+        run: npm install -g npm@latest
+      - name: Set the version from the release tag
+        working-directory: npm
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: npm version "${TAG#v}" --no-git-tag-version
+      - name: Test
+        working-directory: npm
+        run: npm test
+      - name: Publish
+        working-directory: npm
+        run: npm publish --access public --provenance

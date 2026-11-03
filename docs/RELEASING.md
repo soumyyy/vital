@@ -83,12 +83,19 @@ git add Casks/vital.rb && git commit -m "Cask: 0.1.4" && git push
 
 The cask checksum is for `Vital.dmg`; the updater uses the ZIP checksum, which is different. Uninstalling runs `Vital --unregister-fan-helper`, so removal also drops the optional fan-control helper. Installation never grants fan-control approval; that stays in the app. Official Homebrew Cask submission can come later and is subject to Homebrew's acceptance rules.
 
-## npm
+## After you publish a release
 
-`npm/` is the `vital-mac` installer package. It downloads the latest GitHub release at run time, so it needs a new publish only when its own code changes, not for every Vital release. Keep its `version` equal to the Vital version when you do publish:
+Publishing a GitHub release starts `.github/workflows/publish.yml`, which does the rest:
 
-```sh
-cd npm && npm test && npm publish --access public
-```
+- **Homebrew.** Runs `Scripts/update-cask.sh` for the new tag, audits the cask and commits `Cask: <version>` to `main`.
+- **npm.** Sets the `vital-mac` version from the tag, runs its tests and publishes it with provenance. The package installs the latest release at run time, so it only needs a publish for its own code changes, but publishing every release keeps the versions equal.
 
-Publishing needs `npm login` as the package owner.
+Pre-releases and tags that do not start with `v` are skipped. The release build itself (signing, notarizing, the DMG and ZIP) stays on your Mac, because it needs your Developer ID and notary profile.
+
+### One-time npm setup
+
+npm publishes from GitHub without a stored token, using trusted publishing. On npmjs.com open the `vital-mac` package, then **Settings**, then **Trusted Publisher**, choose GitHub Actions, and enter repository `soumyyy/vital`, workflow `publish.yml`. Until this is done the npm job fails with an authentication error; the cask job is unaffected. Publishing by hand still works: `cd npm && npm version <version> --no-git-tag-version && npm publish --access public`.
+
+## Website
+
+`site/` is a single static page deployed to https://soumyyy.github.io/vital/ by `.github/workflows/pages.yml` whenever it changes on `main`. It has no build step and loads no third-party scripts, fonts or analytics. Its download links point at `releases/latest`, so it needs no edit per release.

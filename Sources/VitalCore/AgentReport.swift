@@ -150,7 +150,7 @@ public enum AgentReport {
     }
 
     public static func text(_ r: Status) -> String {
-        var out = ["\(r.summary.title)" + (r.summary.detail.map { " \($0)" } ?? "")]
+        var out = ["\(r.summary.title)." + (r.summary.detail.map { " \($0)" } ?? "")]
         if let c = r.cpu { out.append(row("CPU", "\(pct(c.percent)) of \(c.cores) cores")) }
         if let m = r.memory {
             out.append(row("Memory", "\(pct(m.percent))  \(Format.bytes(m.usedBytes, base: .binary)) of \(Format.bytes(m.totalBytes, base: .binary)), pressure \(m.pressure), swap \(Format.bytes(m.swapUsedBytes, base: .binary))"))

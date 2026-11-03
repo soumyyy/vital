@@ -6,7 +6,7 @@
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-lightgrey)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-M1%20and%20later-lightgrey)
 
-A lean menu bar monitor for Apple Silicon Macs. It answers one question: **what is eating my Mac right now, and can I stop it?**
+A lean menu bar monitor for Apple Silicon Macs ([website](https://soumyyy.github.io/vital/)). It answers one question: **what is eating my Mac right now, and can I stop it?**
 
 <p align="center">
   <img src="docs/images/overview.png" alt="Vital Overview: CPU, memory, disk and heat graphs, with storage, network and battery below" width="300">

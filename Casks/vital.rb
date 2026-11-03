@@ -19,8 +19,8 @@ cask "vital" do
   binary "#{appdir}/Vital.app/Contents/MacOS/Vital", target: "vital"
 
   # A menu bar app has no window to open, so start it: the icon appears at once.
-  postflight do
-    system_command "/usr/bin/open", args: ["-a", "#{appdir}/Vital.app"]
+  postflight_steps do
+    run "/usr/bin/open", args: ["-a", "Vital"]
   end
 
   # Remove the optional fan-control helper registration before the app is deleted.

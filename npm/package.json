@@ -1,6 +1,6 @@
 {
   "name": "vital-mac",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Installer and command line for Vital, a lean menu bar monitor for macOS: CPU, memory, storage, heat and fans.",
   "keywords": ["macos", "menu-bar", "system-monitor", "cpu", "memory", "thermal", "fan-control", "apple-silicon"],
   "homepage": "https://github.com/soumyyy/vital",

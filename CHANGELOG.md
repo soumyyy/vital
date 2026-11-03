@@ -2,6 +2,9 @@
 
 All notable changes. Versions follow the GitHub releases.
 
+## 0.1.6 (2026-11-03)
+- The Overview shows the last 5 minutes only, as before; the range picker from 0.1.5 is gone. The 24 hour record is still kept in the background for `vital history` and AI agents.
+
 ## 0.1.5 (2026-11-03)
 - **24 hour history.** Vital keeps a day of CPU, memory, heat and network by the minute in a small file, for `vital history` and AI agents. The Overview still graphs the last 5 minutes.
 - **Clearer app rows.** An app made of many processes says so ("Google Chrome  96 processes"), and the Quit sheet says how many will close.

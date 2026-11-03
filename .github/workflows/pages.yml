@@ -19,6 +19,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+      - name: Stamp asset URLs with the commit so browsers never keep a stale stylesheet
+        run: sed -i "s/?v=dev/?v=${GITHUB_SHA::10}/g" site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

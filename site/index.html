@@ -5,170 +5,176 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vital: a lean menu bar monitor for your Mac</title>
 <meta name="description" content="Vital sits in the Mac menu bar and shows what is eating your CPU, memory, storage and heat, which app is responsible, and lets you Quit it safely. Free, open source, tiny.">
-<meta name="theme-color" content="#eef0f3" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#131417" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#000000">
+<meta property="og:type" content="website">
 <meta property="og:title" content="Vital: a lean menu bar monitor for your Mac">
 <meta property="og:description" content="What is eating your Mac, and can you stop it? Free and open source.">
-<meta property="og:image" content="https://soumyyy.github.io/vital/overview.png">
+<meta property="og:image" content="https://soumyyy.github.io/vital/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Vital: what is eating your Mac, and can you stop it? Shown next to the Vital panel with CPU, memory, disk and heat.">
 <meta property="og:url" content="https://soumyyy.github.io/vital/">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.png">
-<link rel="stylesheet" href="style.css">
+<link rel="preload" href="fonts/GeistSerif-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="wallpaper.webp" as="image" type="image/webp">
+<link rel="stylesheet" href="style.css?v=dev">
 </head>
 <body>
 
+<a class="skip" href="#main">Skip to content</a>
+
 <header class="bar">
-  <div class="wrap">
-    <nav aria-label="Primary">
-      <a href="#top">Vital</a>
-      <a href="#features">Features</a>
-      <a href="#cli">Command line</a>
-      <a href="#install">Install</a>
-    </nav>
-    <div class="right" aria-hidden="true">
-      <span class="small">Tue 14:32</span>
-      <span class="glyph"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" style="color:currentColor"><defs><mask id="m0"><rect width="18" height="18" fill="#fff"/><polyline points="3,9 6.2,9 7.6,5.6 9.6,12.4 11.2,9 15,9" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></mask></defs><rect x="1.5" y="1.5" width="15" height="15" rx="4.6" fill="currentColor" mask="url(#m0)"/></svg></span>
-    </div>
+  <nav aria-label="Primary">
+    <svg class="apple" width="15" height="18" viewBox="0 0 15 18" aria-hidden="true"><path fill="currentColor" d="M12.3 9.5c0-2.2 1.8-3.2 1.9-3.3-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.8-.8C3.4 4.5 2 5.4 1.2 6.7c-1.6 2.8-.4 6.9 1.1 9.1.8 1.1 1.7 2.3 2.8 2.2 1.1 0 1.6-.7 2.9-.7 1.4 0 1.8.7 2.9.7 1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.2-2.6-.1 0-2.5-1-2.5-3.7zM10.1 3c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.5.6-1 1.6-.9 2.6 1 .1 1.9-.5 2.5-1.2z"/></svg>
+    <a class="name" href="#top">Vital</a>
+    <a href="#agents">For agents</a>
+    <a href="#install">Install</a>
+  </nav>
+  <div class="extras" aria-hidden="true">
+    <span class="extra on"><svg width="18" height="18" viewBox="0 0 18 18"><defs><mask id="beat1"><rect width="18" height="18" fill="#fff"/><polyline points="3,9 6.2,9 7.6,4.6 9.6,13.4 11.2,9 15,9" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></mask></defs><rect x="1.5" y="1.5" width="15" height="15" rx="4.6" fill="currentColor" mask="url(#beat1)"/></svg></span>
+    <span class="extra hide-s"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="5" cy="8" r="3"/><path d="M8 8h7M12 8v3M14.5 8v2"/></svg></span>
+    <span class="extra batt"><svg width="26" height="14" viewBox="0 0 26 14"><rect x=".5" y="1.5" width="22" height="11" rx="3.3" fill="none" stroke="currentColor" stroke-opacity=".55"/><rect x="2" y="3" width="15" height="8" rx="2" fill="currentColor"/><path d="M24 5v4c.8-.3 1.3-1.1 1.3-2S24.8 5.3 24 5z" fill="currentColor" fill-opacity=".55"/></svg><span class="pct">87%</span></span>
+    <span class="extra hide-s"><svg width="17" height="14" viewBox="0 0 17 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M1.5 5C5.3 1.5 11.7 1.5 15.5 5M4 7.8c2.6-2.3 6.4-2.3 9 0M6.5 10.5c1.2-1 2.8-1 4 0"/><circle cx="8.5" cy="12.5" r=".6" fill="currentColor"/></svg></span>
+    <span class="extra hide-s"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="6.2" cy="6.2" r="4.5"/><path d="m9.8 9.8 4 4"/></svg></span>
+    <span class="extra hide-s"><svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="14" height="5" rx="2.5"/><rect x="1" y="8" width="14" height="5" rx="2.5"/><circle cx="4" cy="3.5" r="1" fill="currentColor"/><circle cx="12" cy="10.5" r="1" fill="currentColor"/></svg></span>
+    <span class="extra clock" id="clock">Tue Nov 3&nbsp;&nbsp;10:32 PM</span>
   </div>
 </header>
 
-<main id="top">
-  <div class="wrap hero">
-    <div>
-      <h1>What is eating your Mac, and can you stop it?</h1>
-      <p class="lede">Vital sits in your menu bar and answers that one question. Click it to see CPU, memory, storage and heat, the apps responsible, and Quit them safely.</p>
-      <div class="actions">
-        <a class="btn" href="https://github.com/soumyyy/vital/releases/latest/download/Vital.dmg">Download Vital.dmg</a>
-        <a class="btn quiet" href="https://github.com/soumyyy/vital">View on GitHub</a>
+<main id="main">
+  <div class="desk" id="top">
+    <div class="hero">
+      <div class="pitch">
+        <h1>What is eating your Mac, and can you stop it?</h1>
+        <p class="lede">Vital lives in your menu bar. See which app is behind your CPU, memory, storage and heat, and Quit it safely.</p>
+        <div class="cmd hero-cmd"><code id="cmd-hero">npx vital-mac install</code><button type="button" class="copy" data-copy="cmd-hero">Copy</button></div>
+        <p class="fine">Free and open source. macOS 14 or later, Apple silicon.</p>
       </div>
-      <p class="muted small">Free and open source (MIT). macOS 14 or later, Apple silicon. Signed and notarized by Apple.</p>
+      <div class="demo-slot">
+        <div class="demo" id="demo" aria-label="Interactive demo of the Vital panel"></div>
+        <noscript><img src="panel-heat.png" width="682" height="466" alt="The Heat tab in Vital: CPU 32 percent, memory 81 percent, storage 94 percent, heat 44 degrees, a Fan control set to Automatic."></noscript>
+      </div>
     </div>
-    <div class="panel-shot">
-      <img src="overview.png" width="680" height="808" alt="The Vital panel open from the menu bar: CPU, memory, disk and heat graphs, with storage, network and battery below.">
-    </div>
+    <ul class="dock" aria-hidden="true"><li><a href="#" tabindex="-1" aria-label="Finder"><svg viewBox="0 0 64 64"><use href="icons.svg#finder"/></svg></a></li><li><a href="#" tabindex="-1" aria-label="Launchpad"><svg viewBox="0 0 64 64"><use href="icons.svg#launchpad"/></svg></a></li><li><a href="#" tabindex="-1" aria-label="Safari"><svg viewBox="0 0 64 64"><use href="icons.svg#safari"/></svg></a></li><li><a href="#" tabindex="-1" aria-label="Messages"><svg viewBox="0 0 64 64"><use href="icons.svg#messages"/></svg></a></li><li><a href="#" tabindex="-1" aria-label="Mail"><svg viewBox="0 0 64 64"><use href="icons.svg#mail"/></svg></a></li><li><a href="#" tabindex="-1" aria-label="Maps"><svg viewBox="0 0 64 64"><use href="icons.svg#maps"/></svg></a></li><li><a href="#" tabindex="-1" aria-label="Photos"><svg viewBox="0 0 64 64"><use href="icons.svg#photos"/></svg></a></li><li><a href="#" tabindex="-1" aria-label="Calendar"><svg viewBox="0 0 64 64"><use href="icons.svg#calendar"/></svg></a></li><li><a href="#" tabindex="-1" aria-label="Notes"><svg viewBox="0 0 64 64"><use href="icons.svg#notes"/></svg></a></li><li><a href="#" tabindex="-1" aria-label="Music"><svg viewBox="0 0 64 64"><use href="icons.svg#music"/></svg></a></li><li><a href="#" tabindex="-1" aria-label="Terminal"><svg viewBox="0 0 64 64"><use href="icons.svg#terminal"/></svg></a></li><li><a href="#" tabindex="-1" aria-label="System Settings"><svg viewBox="0 0 64 64"><use href="icons.svg#settings"/></svg></a></li><li class="sep"></li><li class="on"><a href="#" tabindex="-1" aria-label="Vital"><svg viewBox="0 0 64 64"><use href="icons.svg#vital"/></svg></a></li></ul>
   </div>
 
-  <section>
-    <div class="wrap split">
-      <div class="intro">
-        <h2>Small enough to forget it is running</h2>
-      </div>
-      <div>
-        <p class="measure"><b>12 MB</b> of memory and almost no CPU while the panel is closed. About <b>27 MB</b> while you are looking at it.</p>
-        <p class="muted small">Measured on a MacBook Pro with an M3. Vital reads the system directly instead of running <code>ps</code> or <code>top</code>, backs off when your Mac is busy, and sends nothing anywhere. <a href="https://github.com/soumyyy/vital#footprint">The numbers</a>.</p>
-      </div>
+      <section class="glance" aria-labelledby="glance-h">
+    <div class="wrap">
+      <h2 id="glance-h">Everything at a glance</h2>
+      <p class="sub">The last five minutes of CPU, memory, disk and heat, with storage, network and battery underneath. Tap a card for the apps behind it.</p>
+      <div class="demo" data-tab="Overview" aria-label="Vital Overview page"></div>
     </div>
   </section>
 
-  <section>
-    <div class="wrap split">
-      <div class="intro">
-        <h2>Tap a vital, see who is using it</h2>
-        <p>Each of CPU, memory, storage and heat opens a ranked list of apps. Google Chrome and its 96 helpers are one row with one figure, so the answer to “what is using my memory?” fits on one line.</p>
-      </div>
-      <div class="shots">
-        <div class="shot"><img src="apps.png" width="680" height="960" loading="lazy" alt="The Vital Memory view: Memory is getting full, Dia is using the most, with a Quit button and the apps ranked by memory."></div>
-      </div>
+  <section class="weight" aria-labelledby="weight-h">
+    <div class="wrap">
+      <h2 id="weight-h" class="big">Runs in <b>under 15&nbsp;MB</b> of memory.</h2>
+      <p class="note">About 12&nbsp;MB while the panel is closed and 27&nbsp;MB while open, on a MacBook Pro with an M3. No telemetry, no accounts, no permission prompts. <a href="https://github.com/soumyyy/vital#footprint">How it was measured</a></p>
     </div>
   </section>
 
-  <section id="features">
-    <div class="wrap split">
-      <div class="intro">
-        <h2>Made to answer, not to decorate</h2>
-        <p>Four vitals, one list of apps, and a Quit button where you need it.</p>
-      </div>
-      <div class="rows">
-        <div class="row">
-          <h3>Quit with confidence</h3>
-          <p>Quit asks the app to save first, and Force Quit asks you to confirm. System processes are protected. A process stuck in the kernel is reported as stuck instead of pretending it quit.</p>
+  <section class="details" aria-labelledby="details-h">
+    <div class="wrap">
+      <h2 id="details-h">Quiet until something needs you</h2>
+      <div class="cols">
+        <div class="item">
+          <h3>Colour means attention</h3>
+          <p>A vital turns amber or red only when it needs you, and names the app to blame. The menu bar icon grows a bigger heartbeat with the load, so colour is never the only signal.</p>
         </div>
-        <div class="row">
-          <h3>Quiet until something is wrong</h3>
-          <div>
-            <p>Colour appears only when a vital needs attention, and that vital then names the app to blame. The menu bar icon shows the same thing, and its heartbeat grows with the load, so it never relies on colour alone.</p>
-            <div class="light">
-              <figure><svg width="28" height="28" viewBox="0 0 18 18" aria-hidden="true" style="color:var(--ink)"><defs><mask id="m1"><rect width="18" height="18" fill="#fff"/><polyline points="3,9 6.2,9 7.6,5.6 9.6,12.4 11.2,9 15,9" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></mask></defs><rect x="1.5" y="1.5" width="15" height="15" rx="4.6" fill="currentColor" mask="url(#m1)"/></svg>Calm</figure>
-              <figure><svg width="28" height="28" viewBox="0 0 18 18" aria-hidden="true" style="color:var(--amber)"><defs><mask id="m2"><rect width="18" height="18" fill="#fff"/><polyline points="3,9 6.2,9 7.6,4.6 9.6,13.4 11.2,9 15,9" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></mask></defs><rect x="1.5" y="1.5" width="15" height="15" rx="4.6" fill="currentColor" mask="url(#m2)"/></svg>Busy</figure>
-              <figure><svg width="28" height="28" viewBox="0 0 18 18" aria-hidden="true" style="color:var(--red)"><defs><mask id="m3"><rect width="18" height="18" fill="#fff"/><polyline points="3,9 6.2,9 7.6,3.6 9.6,14.4 11.2,9 15,9" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></mask></defs><rect x="1.5" y="1.5" width="15" height="15" rx="4.6" fill="currentColor" mask="url(#m3)"/></svg>Struggling</figure>
-            </div>
-          </div>
+        <div class="item">
+          <h3>Fan control</h3>
+          <p>On MacBooks with fans, set a manual speed after a one-time approval. Fans return to Automatic when you quit Vital.</p>
         </div>
-        <div class="row">
-          <h3>Fan control, if you want it</h3>
-          <p>On MacBooks with fans, set a manual speed with a slider after a one-time approval. Quitting Vital returns the fans to Automatic, and the helper does it too if anything goes wrong.</p>
-        </div>
-        <div class="row">
-          <h3>Private by default</h3>
-          <p>No telemetry, no accounts, no permission prompts. The only network request is the update check, and only when you choose Update Software.</p>
-        </div>
-        <div class="row">
+        <div class="item">
           <h3>Honest numbers</h3>
-          <p>If a Mac has no temperature sensor, Vital says “n/a” rather than inventing a figure. Apps macOS will not let it read appear as one approximate row.</p>
+          <p>No temperature sensor? Vital says “n/a” instead of inventing a figure.</p>
         </div>
+      </div>
+      <div class="states states-row" role="img" aria-label="The menu bar icon when calm, busy and struggling">
+        <span><svg width="36" height="36" viewBox="0 0 18 18" class="calm"><defs><mask id="beat2"><rect width="18" height="18" fill="#fff"/><polyline points="3,9 6.2,9 7.6,5.6 9.6,12.4 11.2,9 15,9" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></mask></defs><rect x="1.5" y="1.5" width="15" height="15" rx="4.6" fill="currentColor" mask="url(#beat2)"/></svg>Calm</span>
+        <span><svg width="36" height="36" viewBox="0 0 18 18" class="busy"><defs><mask id="beat3"><rect width="18" height="18" fill="#fff"/><polyline points="3,9 6.2,9 7.6,4.6 9.6,13.4 11.2,9 15,9" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></mask></defs><rect x="1.5" y="1.5" width="15" height="15" rx="4.6" fill="currentColor" mask="url(#beat3)"/></svg>Busy</span>
+        <span><svg width="36" height="36" viewBox="0 0 18 18" class="hard"><defs><mask id="beat4"><rect width="18" height="18" fill="#fff"/><polyline points="3,9 6.2,9 7.6,3.6 9.6,14.4 11.2,9 15,9" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></mask></defs><rect x="1.5" y="1.5" width="15" height="15" rx="4.6" fill="currentColor" mask="url(#beat4)"/></svg>Struggling</span>
       </div>
     </div>
   </section>
 
-  <section id="cli">
-    <div class="wrap split">
-      <div class="intro">
-        <h2>A command line for you and your AI agents</h2>
-        <p><code>vital</code> prints what Vital sees as text, or as JSON with <code>--json</code>. It is read-only: it reports and never quits anything, so an agent can run it without asking first.</p>
-        <p class="small"><a href="https://github.com/soumyyy/vital/blob/main/docs/CLI.md">Command reference</a></p>
+  <section id="agents" class="agents" aria-labelledby="agents-h">
+    <div class="wrap">
+      <div class="agents-head">
+        <h2 id="agents-h">Ask your Mac, or let an agent ask</h2>
+        <p>The <code>vital</code> command prints what the panel sees, as text or JSON. Read-only, so an agent can run it without asking you.</p>
       </div>
-      <div>
-<pre><span class="c"># what is wrong right now</span>
-<span class="k">$</span> vital status
+
+      <div class="term" role="group" aria-label="Sample terminal session">
+        <div class="term-top" aria-hidden="true"><i></i><i></i><i></i><span>zsh</span></div>
+<pre class="term-body"><span class="c"># what is wrong right now</span>
+<span class="p">$</span> <span class="u">vital status</span>
 Memory is getting full. Dia is using the most.
 CPU      18.6% of 8 cores
 Memory   75.3%  6.0 GB of 8.0 GB, pressure elevated
 Storage  93.3% full  32.9 GB available of 494 GB
 Heat     nominal, hottest 42°C
 
-<span class="c"># who is responsible, helpers included</span>
-<span class="k">$</span> vital apps --by memory -n 3
-APP                PROCESSES       CPU  MEMORY  POWER
+<span class="c"># which app is responsible, helpers included</span>
+<span class="p">$</span> <span class="u">vital apps --by memory -n 3</span>
+<span class="h">APP                PROCESSES       CPU  MEMORY  POWER</span>
 Dia                30 processes   0.2%  3.8 GB  0.0 W
 T3 Code (Nightly)  19 processes   2.7%  1.5 GB  0.1 W
 Xcode              7 processes   11.4%  1.2 GB  0.2 W
 
-<span class="c"># the last hours, from the 24 hour record Vital keeps</span>
-<span class="k">$</span> vital history cpu --range 6h --json</pre>
+<span class="c"># the last six hours, from the 24 hour record</span>
+<span class="p">$</span> <span class="u">vital history cpu --range 6h</span></pre>
+      </div>
+
+      <div class="why">
+        <div>
+          <h3>One call, the whole answer</h3>
+          <p><code>vital status</code> says what is slow and which app is responsible, instead of piecing it together from <code>top</code> and <code>ps</code>.</p>
+        </div>
+        <div>
+          <h3>Stable JSON</h3>
+          <p>Add <code>--json</code>. Every object carries a <code>schema</code> version, and units are in the field names.</p>
+        </div>
+        <div>
+          <h3>What happened last night</h3>
+          <p>24 hours of CPU, memory, heat and network by the minute, so “why was it hot at 2 am” has an answer.</p>
+        </div>
+      </div>
+
+      <div class="pair">
+        <div class="brief">
+          <h3>Tell your agent</h3>
+          <div class="snippet">
+<pre id="agent-note">Vital is installed. To see what is slow, run <span class="nb">`vital status --json`</span>. For the app responsible, run <span class="nb">`vital apps --by memory -n 5 --json`</span>. Both are read-only.</pre>
+            <button type="button" class="copy" data-copy="agent-note">Copy</button>
+          </div>
+          <p class="more"><a href="https://github.com/soumyyy/vital/blob/main/docs/CLI.md">Command line reference</a></p>
+        </div>
       </div>
     </div>
   </section>
 
-  <section id="install">
-    <div class="wrap split">
-      <div class="intro">
-        <h2>Install</h2>
-        <p>Vital is signed with a Developer ID and notarized by Apple. It needs macOS 14 or later on Apple silicon.</p>
-      </div>
-      <div class="install">
-        <div class="row">
-          <h3>Homebrew</h3>
-          <div class="cmd"><code>brew tap soumyyy/vital https://github.com/soumyyy/vital &amp;&amp; brew install --cask soumyyy/vital/vital</code><button type="button" data-copy>Copy</button></div>
-        </div>
-        <div class="row">
-          <h3>npm</h3>
-          <div class="cmd"><code>npx vital-mac install</code><button type="button" data-copy>Copy</button></div>
-        </div>
-        <div class="row">
-          <h3>Download</h3>
-          <p><a href="https://github.com/soumyyy/vital/releases/latest/download/Vital.dmg">Vital.dmg</a>. Open it and drag Vital into Applications.</p>
-        </div>
-      </div>
+  <section id="install" class="install" aria-labelledby="install-h">
+    <div class="wrap">
+      <svg class="appicon" viewBox="0 0 64 64" aria-hidden="true"><use href="icons.svg#vital"/></svg>
+      <h2 id="install-h">Get Vital</h2>
+      <div class="cmd hero-cmd"><code id="cmd-npm">npx vital-mac install</code><button type="button" class="copy" data-copy="cmd-npm">Copy</button></div>
     </div>
   </section>
 </main>
 
 <footer>
   <div class="wrap">
-    <span>Vital is open source under the MIT license. Made by Soumya Maheshwari.</span>
+    <div class="get">
+      <a class="btn" href="https://github.com/soumyyy/vital/releases/latest/download/Vital.dmg">Download DMG</a>
+      <button type="button" class="btn ghost" data-copy-text="npx vital-mac install">Copy npm</button>
+      <button type="button" class="btn ghost" data-copy-text="brew tap soumyyy/vital https://github.com/soumyyy/vital &amp;&amp; brew install --cask soumyyy/vital/vital">Copy Homebrew</button>
+    </div>
+    <p>Vital is open source under the MIT license. Made by Soumya Maheshwari.</p>
     <nav aria-label="Project">
       <a href="https://github.com/soumyyy/vital">GitHub</a>
-      <a href="https://github.com/soumyyy/vital/releases">Releases</a>
       <a href="https://github.com/soumyyy/vital/blob/main/CHANGELOG.md">Changelog</a>
       <a href="https://github.com/soumyyy/vital/issues">Report a problem</a>
     </nav>
@@ -176,15 +182,25 @@ Xcode              7 processes   11.4%  1.2 GB  0.2 W
 </footer>
 
 <script>
-document.querySelectorAll('[data-copy]').forEach(function (button) {
+(function () {
+  var el = document.getElementById('clock');
+  function tick() {
+    var d = new Date();
+    el.innerHTML = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '') + '&nbsp;&nbsp;' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+  tick(); setInterval(tick, 15000);
+})();
+document.querySelectorAll('[data-copy], [data-copy-text]').forEach(function (button) {
+  var label = button.textContent;
   button.addEventListener('click', function () {
-    var text = button.parentElement.querySelector('code').textContent;
+    var text = button.dataset.copyText || document.getElementById(button.dataset.copy).textContent;
     navigator.clipboard.writeText(text).then(function () {
       button.textContent = 'Copied';
-      setTimeout(function () { button.textContent = 'Copy'; }, 1600);
+      setTimeout(function () { button.textContent = label; }, 1600);
     });
   });
 });
 </script>
+<script src="demo.js?v=dev" defer></script>
 </body>
 </html>

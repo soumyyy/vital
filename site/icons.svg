@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute">
+<defs>
+<linearGradient id="gF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ec8ff"/><stop offset="1" stop-color="#1d77f2"/></linearGradient>
+<linearGradient id="gS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4fc3ff"/><stop offset="1" stop-color="#0a6cf0"/></linearGradient>
+<linearGradient id="gM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6bf08a"/><stop offset="1" stop-color="#16b83e"/></linearGradient>
+<linearGradient id="gMa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#58b6ff"/><stop offset="1" stop-color="#1363e0"/></linearGradient>
+<linearGradient id="gN" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe57a"/><stop offset="1" stop-color="#f7b500"/></linearGradient>
+<linearGradient id="gMu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6b88"/><stop offset="1" stop-color="#f1223f"/></linearGradient>
+<linearGradient id="gSe" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9bec8"/><stop offset="1" stop-color="#6b7180"/></linearGradient>
+<linearGradient id="gL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9ecf2"/><stop offset="1" stop-color="#a9afbd"/></linearGradient>
+<linearGradient id="gT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3b40"/><stop offset="1" stop-color="#0b0b0d"/></linearGradient>
+<linearGradient id="gV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3b3f"/><stop offset="1" stop-color="#0d0d0f"/></linearGradient>
+<linearGradient id="gX" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ac2ff"/><stop offset="1" stop-color="#1166e8"/></linearGradient>
+<linearGradient id="gD" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd25a"/><stop offset="1" stop-color="#ff8a1f"/></linearGradient>
+<linearGradient id="gZ" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4d94ff"/><stop offset="1" stop-color="#1767ff"/></linearGradient>
+</defs>
+
+<symbol id="finder" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="url(#gF)"/><path d="M32 0h18.5A13.5 13.5 0 0 1 64 13.5v37A13.5 13.5 0 0 1 50.5 64H32z" fill="#f4f6fa"/><path d="M32 0v64" stroke="#0b3f93" stroke-opacity=".35"/><path d="M19 20v9M45 20v9M20 44c8 6 16 6 24 0" stroke="#10213f" stroke-width="3.4" stroke-linecap="round" fill="none"/></symbol>
+
+<symbol id="launchpad" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="url(#gL)"/><g fill="#ff5d55"><rect x="14" y="14" width="10" height="10" rx="2.6"/></g><g fill="#ffb02e"><rect x="27" y="14" width="10" height="10" rx="2.6"/></g><g fill="#34c759"><rect x="40" y="14" width="10" height="10" rx="2.6"/></g><g fill="#2f8bff"><rect x="14" y="27" width="10" height="10" rx="2.6"/></g><g fill="#a463f2"><rect x="27" y="27" width="10" height="10" rx="2.6"/></g><g fill="#ff6fa1"><rect x="40" y="27" width="10" height="10" rx="2.6"/></g><g fill="#4ac8ea"><rect x="14" y="40" width="10" height="10" rx="2.6"/></g><g fill="#7a808c"><rect x="27" y="40" width="10" height="10" rx="2.6"/></g><g fill="#ff9f0a"><rect x="40" y="40" width="10" height="10" rx="2.6"/></g></symbol>
+
+<symbol id="safari" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="url(#gS)"/><circle cx="32" cy="32" r="21" fill="#f6f8fb"/><circle cx="32" cy="32" r="21" fill="none" stroke="#0a4fb3" stroke-opacity=".3" stroke-width="2"/><path d="M42.5 21.5 35.6 35.6 21.5 42.5l6.9-14.1z" fill="#ff4a40"/><path d="M42.5 21.5 35.6 35.6 28.4 28.4z" fill="#ff7a70"/><path d="M21.5 42.5l6.9-14.1 7.2 7.2z" fill="#e8ecf2"/></symbol>
+
+<symbol id="messages" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="url(#gM)"/><path d="M32 14c-10.5 0-19 6.7-19 15 0 4.7 2.7 8.9 7 11.6-.3 2.4-1.5 4.7-3.2 6.4 3.4-.2 6.5-1.5 8.7-3.2 2.1.5 4.3.7 6.5.7 10.5 0 19-6.7 19-15.5S42.5 14 32 14z" fill="#fff"/></symbol>
+
+<symbol id="mail" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="url(#gMa)"/><rect x="12" y="17" width="40" height="30" rx="5" fill="#fff"/><path d="m14 21 18 14 18-14" fill="none" stroke="#2a74e8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+
+<symbol id="maps" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="#e6f1d2"/><path d="M0 40 44 64H0z" fill="#cfe5ff" opacity="0"/><path d="M-4 46 70 10" stroke="#fff" stroke-width="9"/><path d="M26 -4 38 68" stroke="#fff" stroke-width="6"/><path d="M0 22C16 30 40 20 64 38" stroke="#7fb8ff" stroke-width="7" fill="none" opacity=".7"/><path d="M40 16c-6 0-10.5 4.3-10.5 9.8 0 7 10.5 17.7 10.5 17.7s10.5-10.7 10.5-17.7C50.5 20.3 46 16 40 16z" fill="#ff4a40"/><circle cx="40" cy="26" r="4" fill="#fff"/></symbol>
+
+<symbol id="photos" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="#fbfbfd"/><g style="mix-blend-mode:multiply"><ellipse cx="32" cy="19.5" rx="7" ry="11.5" fill="#ffb02e"/><ellipse cx="32" cy="19.5" rx="7" ry="11.5" fill="#ff5d55" transform="rotate(45 32 32)"/><ellipse cx="32" cy="19.5" rx="7" ry="11.5" fill="#ff6fa1" transform="rotate(90 32 32)"/><ellipse cx="32" cy="19.5" rx="7" ry="11.5" fill="#a463f2" transform="rotate(135 32 32)"/><ellipse cx="32" cy="19.5" rx="7" ry="11.5" fill="#2f8bff" transform="rotate(180 32 32)"/><ellipse cx="32" cy="19.5" rx="7" ry="11.5" fill="#34c3c9" transform="rotate(225 32 32)"/><ellipse cx="32" cy="19.5" rx="7" ry="11.5" fill="#34c759" transform="rotate(270 32 32)"/><ellipse cx="32" cy="19.5" rx="7" ry="11.5" fill="#f2d400" transform="rotate(315 32 32)"/></g></symbol>
+
+<symbol id="calendar" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="#fff"/><text x="32" y="17.5" text-anchor="middle" font-family="Geist,-apple-system,sans-serif" font-size="9" font-weight="700" fill="#ff3b30" letter-spacing=".5">TUE</text><text x="32" y="48" text-anchor="middle" font-family="Geist,-apple-system,sans-serif" font-size="29" font-weight="400" fill="#1d1d1f">3</text></symbol>
+
+<symbol id="notes" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="#fffdf4"/><path d="M0 14.5A14.5 14.5 0 0 1 14.5 0h35A14.5 14.5 0 0 1 64 14.5V20H0z" fill="url(#gN)"/><path d="M12 31h40M12 40h40M12 49h26" stroke="#e8e2c9" stroke-width="2" stroke-linecap="round"/></symbol>
+
+<symbol id="music" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="url(#gMu)"/><path d="M26 18.5v24.5a6 6 0 1 1-4-5.6V20.5c0-1.3.9-2.4 2.2-2.7l17.5-3.5c1.5-.3 2.8.8 2.8 2.3V38a6 6 0 1 1-4-5.6V21.5l-14.5 3z" fill="#fff"/></symbol>
+
+<symbol id="terminal" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="url(#gT)"/><rect x=".5" y=".5" width="63" height="63" rx="14" fill="none" stroke="#fff" stroke-opacity=".18"/><path d="m17 24 10 8-10 8" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M32 42h14" stroke="#fff" stroke-width="4" stroke-linecap="round"/></symbol>
+
+<symbol id="settings" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="url(#gSe)"/><g fill="#3b3f4a"><circle cx="32" cy="32" r="17"/></g><g stroke="#3b3f4a" stroke-width="6" stroke-linecap="round"><path d="M32 12v6M32 46v6M12 32h6M46 32h6M17.9 17.9l4.2 4.2M41.9 41.9l4.2 4.2M17.9 46.1l4.2-4.2M41.9 22.1l4.2-4.2"/></g><circle cx="32" cy="32" r="9" fill="#d5d9e2"/></symbol>
+
+<symbol id="vital" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="url(#gV)"/><rect x=".500" y=".500" width="63" height="63" rx="14" fill="none" stroke="#fff" stroke-opacity=".16"/><rect x="11" y="11" width="42" height="42" rx="11" fill="#fff" fill-opacity=".14"/><path d="M16 32h10l4-12 6 24 4-12h8" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+
+<!-- third-party apps in the demo list: simplified marks -->
+<symbol id="dia" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="url(#gD)"/><circle cx="32" cy="32" r="14" fill="none" stroke="#fff" stroke-width="5"/><circle cx="32" cy="32" r="5" fill="#fff"/></symbol>
+
+<symbol id="chrome" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="#f4f6fa"/><circle cx="32" cy="32" r="21" fill="#ea4335"/><path d="M32 32 13.8 21.5A21 21 0 0 0 32 53z" fill="#34a853"/><path d="M32 32 50.2 21.5A21 21 0 0 1 32 53z" fill="#fbbc04"/><circle cx="32" cy="32" r="9" fill="#fff"/><circle cx="32" cy="32" r="6.5" fill="#4285f4"/></symbol>
+
+<symbol id="xcode" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="url(#gX)"/><path d="M22 44 38 20" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="m36 17 8 5-3 5-8-5z" fill="#fff"/><path d="M19 47h26" stroke="#fff" stroke-opacity=".7" stroke-width="3.5" stroke-linecap="round"/></symbol>
+
+<symbol id="slack" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="#fff"/><g stroke-width="7" stroke-linecap="round" fill="none"><path d="M24 15v15" stroke="#36c5f0"/><path d="M40 34v15" stroke="#2eb67d"/><path d="M34 24h15" stroke="#ecb22e"/><path d="M15 40h15" stroke="#e01e5a"/></g></symbol>
+
+<symbol id="zoom" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="url(#gZ)"/><rect x="12" y="21" width="27" height="22" rx="6" fill="#fff"/><path d="m43 29 9-5.5v17L43 35z" fill="#fff"/></symbol>
+
+<symbol id="figma" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.5" fill="#1e1e1f"/><path d="M24 12h8v13h-8a6.5 6.5 0 0 1 0-13z" fill="#f24e1e"/><path d="M32 12h8a6.5 6.5 0 0 1 0 13h-8z" fill="#ff7262"/><path d="M24 25h8v13h-8a6.5 6.5 0 0 1 0-13z" fill="#a259ff"/><circle cx="38.5" cy="31.5" r="6.5" fill="#1abcfe"/><path d="M24 38h8v6.5A6.5 6.5 0 1 1 24 44.5z" fill="#0acf83"/></symbol>
+</svg>

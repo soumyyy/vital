@@ -70,8 +70,7 @@ Running the release script does not publish files or change GitHub visibility. P
 The cask lives in this repository (`Casks/vital.rb`), so the repository is its own tap. Users add it by URL, because the repository is not named `homebrew-*`:
 
 ```sh
-brew tap soumyyy/vital https://github.com/soumyyy/vital
-brew install --cask soumyyy/vital/vital
+brew tap soumyyy/vital https://github.com/soumyyy/vital && brew install --cask vital
 ```
 
 After publishing a release:

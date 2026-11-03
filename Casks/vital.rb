@@ -17,6 +17,11 @@ cask "vital" do
 
   app "Vital.app"
 
+  # A menu bar app has no window to open, so start it: the icon appears at once.
+  postflight do
+    system_command "/usr/bin/open", args: ["-a", "#{appdir}/Vital.app"]
+  end
+
   # Remove the optional fan-control helper registration before the app is deleted.
   uninstall quit:       "dev.soumya.vital",
             signal:     [["TERM", "dev.soumya.vital"]],

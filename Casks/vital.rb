@@ -18,9 +18,10 @@ cask "vital" do
   app "Vital.app"
   binary "#{appdir}/Vital.app/Contents/MacOS/Vital", target: "vital"
 
-  # A menu bar app has no window to open, so start it: the icon appears at once.
-  postflight_steps do
-    run "/usr/bin/open", args: ["-a", "Vital"]
+  # A menu bar app has no window to open, so start it: the icon appears at once. This uses the block form because
+  # `postflight_steps` runs in a sandbox that cannot reach Launch Services; a failed launch must not fail the install.
+  postflight do
+    system_command "/usr/bin/open", args: ["-a", "#{appdir}/Vital.app"], must_succeed: false
   end
 
   # Remove the optional fan-control helper registration before the app is deleted.

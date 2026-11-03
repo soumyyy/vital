@@ -5,7 +5,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appState: AppState?
     private var statusController: StatusItemController?
 
-    func applicationWillTerminate(_ notification: Notification) { appState?.fanController.stop() }
+    func applicationWillTerminate(_ notification: Notification) {
+        appState?.saveHistory()
+        appState?.fanController.stop()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         installApplicationMenu()

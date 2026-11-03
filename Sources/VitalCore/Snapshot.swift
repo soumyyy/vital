@@ -11,7 +11,7 @@ public struct Snapshot: Sendable {
     public var swapGrowthBytesPerSec: Double
     public var band: LoadBand
     public var hasProcessData: Bool           // false for the first open tick (no deltas yet)
-    public var network: NetworkReading?       // only while the panel is open
+    public var network: NetworkReading?       // first reading after a reset is nil
     public var battery: BatteryReading?       // nil on Macs without a battery, and while the panel is closed
     public var sleepBlockers: [Int32: SleepBlock]
     public var pageInBytesPerSec: Double = 0   // memory read back from disk, system-wide

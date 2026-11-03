@@ -1,0 +1,17 @@
+{
+  "name": "vital-mac",
+  "version": "0.1.5",
+  "description": "Installer and command line for Vital, a lean menu bar monitor for macOS: CPU, memory, storage, heat and fans.",
+  "keywords": ["macos", "menu-bar", "system-monitor", "cpu", "memory", "thermal", "fan-control", "apple-silicon"],
+  "homepage": "https://github.com/soumyyy/vital",
+  "bugs": "https://github.com/soumyyy/vital/issues",
+  "repository": { "type": "git", "url": "git+https://github.com/soumyyy/vital.git", "directory": "npm" },
+  "license": "MIT",
+  "author": "Soumya Maheshwari",
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "engines": { "node": ">=18" },
+  "bin": { "vital": "bin/vital.js", "vital-mac": "bin/vital-mac.js" },
+  "files": ["bin", "lib", "README.md", "LICENSE"],
+  "scripts": { "test": "node --test test/*.test.js" }
+}

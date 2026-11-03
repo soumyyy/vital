@@ -1,71 +1,88 @@
 import SwiftUI
 import VitalCore
 
-/// Everything at a glance: a small graph per vital for the last five minutes, plus network and battery.
+/// Everything at a glance: a small graph per vital for the last 5 minutes, hour or day, plus network and battery.
 /// Tapping a card opens that vital's list of apps.
 struct OverviewView: View {
     @ObservedObject var model: PanelModel
-    private static let window: TimeInterval = 300, buckets = 60
+    private static let buckets = 60
 
     var body: some View {
         let s = model.snapshot
         let h = model.histories
         let now = s.date == .distantPast ? Date() : s.date
-        let series = { (history: History, stale: Bool) -> [Double] in
-            history.resampled(window: Self.window, buckets: Self.buckets, now: now, staleAfter: stale ? 6 : nil).compactMap { $0 }
+        let range = model.range, long = model.longHistories
+        let live = range == .fiveMinutes
+        let series = { (history: History, day: LongHistory, stale: Bool) -> [Double] in
+            live ? history.resampled(window: range.window, buckets: Self.buckets, now: now, staleAfter: stale ? 6 : nil).compactMap { $0 }
+                 : day.resampled(window: range.window, buckets: Self.buckets, now: now).compactMap { $0 }
         }
         let layout = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
         VStack(alignment: .leading, spacing: 8) {
+            RangePicker(range: $model.range)
             LazyVGrid(columns: layout, spacing: 8) {
-                cpuCard(s, series(h.cpu, false))
-                memoryCard(s, series(h.memory, false))
-                diskCard(s, read: series(h.diskRead, true), write: series(h.diskWrite, true))
-                heatCard(s, series(h.heat, false))
+                cpuCard(s, series(h.cpu, long.cpu, false), stats: stats(long.cpu, range, now))
+                memoryCard(s, series(h.memory, long.memory, false), stats: stats(long.memory, range, now))
+                diskCard(s, read: live ? series(h.diskRead, long.cpu, true) : [], write: live ? series(h.diskWrite, long.cpu, true) : [], live: live)
+                heatCard(s, series(h.heat, long.heat, false), stats: stats(long.heat, range, now))
             }
-            thinRows(s, down: series(h.down, true), up: series(h.up, true))
+            thinRows(s, down: series(h.down, long.down, true), up: series(h.up, long.up, true))
         }
+    }
+
+    /// Average and highest reading over a long range; nil on the live 5 minute view, which shows the current figure instead.
+    private func stats(_ h: LongHistory, _ range: HistoryRange, _ now: Date) -> LongHistory.Stats? {
+        range == .fiveMinutes ? nil : h.stats(window: range.window, now: now)
     }
 
     // MARK: cards
 
-    private func cpuCard(_ s: Snapshot, _ values: [Double]) -> some View {
+    private func cpuCard(_ s: Snapshot, _ values: [Double], stats: LongHistory.Stats?) -> some View {
         let level = s.cpu.map { Health.cpu($0.total) } ?? .good
         return OverviewCard(title: "CPU", value: s.cpu.map { Format.percent($0.total) } ?? "n/a", level: level,
-                            caption: Text("In use"), captionSpoken: "in use", open: { model.select(.cpu) }) {
+                            caption: Text(stats.map { "avg \(Format.percent($0.mean)) · peak \(Format.percent($0.peak))" } ?? "In use"),
+                            captionSpoken: stats.map { "average \(Format.percent($0.mean)), peak \(Format.percent($0.peak)) over the \(model.range.spoken)" } ?? "in use", open: { model.select(.cpu) }) {
             Sparkline(values: values, color: lineColor(level), slots: Self.buckets)
         }
     }
 
-    private func memoryCard(_ s: Snapshot, _ values: [Double]) -> some View {
+    private func memoryCard(_ s: Snapshot, _ values: [Double], stats: LongHistory.Stats?) -> some View {
         let level = s.memory.map { Health.memory($0.pressure) } ?? .good
-        let caption = s.memory.map { "\(Format.bytes($0.usedBytes, base: .binary)) of \(Format.bytes($0.totalBytes, base: .binary))" } ?? ""
+        let caption = stats.map { "avg \(Format.percent($0.mean)) · peak \(Format.percent($0.peak))" }
+            ?? s.memory.map { "\(Format.bytes($0.usedBytes, base: .binary)) of \(Format.bytes($0.totalBytes, base: .binary))" } ?? ""
         return OverviewCard(title: "Memory", value: s.memory.map { Format.percent($0.usedFraction) } ?? "n/a", level: level,
                             caption: Text(caption), captionSpoken: caption, open: { model.select(.memory) }) {
             Sparkline(values: Self.ranged(values, minSpan: 0.15), color: lineColor(level), slots: Self.buckets)
         }
     }
 
-    private func diskCard(_ s: Snapshot, read: [Double], write: [Double]) -> some View {
+    private func diskCard(_ s: Snapshot, read: [Double], write: [Double], live: Bool) -> some View {
         let apps = s.groups.filter { !$0.isAggregate }
         let r = apps.reduce(0) { $0 + $1.diskReadBytesPerSec }, w = apps.reduce(0) { $0 + $1.diskWriteBytesPerSec }
         let top = max(1_000_000, (read + write).max() ?? 0)           // quiet disks stay flat instead of filling the graph
         return OverviewCard(title: "Disk", value: s.hasProcessData ? Format.rate(r + w) : "…", level: .good,
                             caption: Text("●").foregroundColor(Palette.blue) + Text(" \(Format.rate(r))   ") + Text("●").foregroundColor(Palette.orange) + Text(" \(Format.rate(w))"),
                             captionSpoken: "reading \(Format.rate(r)), writing \(Format.rate(w))", open: { model.select(.storage) }) {
-            ZStack {
-                Sparkline(values: read.map { $0 / top }, color: Palette.blue, filled: false, slots: Self.buckets)
-                Sparkline(values: write.map { $0 / top }, color: Palette.orange, filled: false, slots: Self.buckets)
+            if live {
+                ZStack {
+                    Sparkline(values: read.map { $0 / top }, color: Palette.blue, filled: false, slots: Self.buckets)
+                    Sparkline(values: write.map { $0 / top }, color: Palette.orange, filled: false, slots: Self.buckets)
+                }
+            } else {
+                Text("Graphed for 5 min only").font(.system(size: 10)).foregroundStyle(.tertiary)      // per-app disk is read only while the panel is open
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
 
-    private func heatCard(_ s: Snapshot, _ values: [Double]) -> some View {
+    private func heatCard(_ s: Snapshot, _ values: [Double], stats: LongHistory.Stats?) -> some View {
         let level = Health.heat(s.thermal.state)
         let value = s.thermal.hottestCelsius.map { "\(Int($0.rounded()))°" } ?? VitalTiles.word(s.thermal.state)
         let scaled = Self.ranged(values, minSpan: 15)
         return OverviewCard(title: "Heat", value: value, level: level,
-                            caption: Text(s.thermal.hottestCelsius == nil ? "No temperature sensor" : VitalTiles.word(s.thermal.state)),
-                            captionSpoken: VitalTiles.word(s.thermal.state), open: { model.select(.heat) }) {
+                            caption: Text(stats.map { "avg \(Int($0.mean.rounded()))° · peak \(Int($0.peak.rounded()))°" }
+                                          ?? (s.thermal.hottestCelsius == nil ? "No temperature sensor" : VitalTiles.word(s.thermal.state))),
+                            captionSpoken: stats.map { "average \(Int($0.mean.rounded())) degrees, peak \(Int($0.peak.rounded())) over the \(model.range.spoken)" } ?? VitalTiles.word(s.thermal.state), open: { model.select(.heat) }) {
             Sparkline(values: scaled, color: lineColor(level), slots: Self.buckets)
         }
     }
@@ -161,5 +178,26 @@ private struct ThinRow<Graph: View>: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(title), \(value)")
         if let open { Button(action: open) { row }.buttonStyle(.plain).focusEffectDisabled() } else { row }
+    }
+}
+
+/// 5 min, 1 hr and 24 hr: small text buttons, the chosen one on a soft pill.
+private struct RangePicker: View {
+    @Binding var range: HistoryRange
+    var body: some View {
+        HStack(spacing: 2) {
+            Spacer()
+            ForEach(HistoryRange.allCases) { r in
+                Button { range = r } label: {
+                    Text(r.rawValue).font(Typo.small).monospacedDigit()
+                        .foregroundStyle(r == range ? Color.primary : Color.primary.opacity(0.55))
+                        .padding(.horizontal, 8).padding(.vertical, 2)
+                        .background(Capsule().fill(Color.primary.opacity(r == range ? 0.1 : 0)))
+                }
+                .buttonStyle(.plain).focusEffectDisabled()
+                .accessibilityLabel("Graph \(r.spoken)").accessibilityAddTraits(r == range ? .isSelected : [])
+            }
+        }
+        .padding(.trailing, 2)
     }
 }

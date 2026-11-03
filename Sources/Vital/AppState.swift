@@ -10,6 +10,8 @@ final class AppState {
     private(set) var latest = Snapshot.empty
     private(set) var cpuHistory: [Double] = []
     private(set) var histories = Histories()
+    private(set) var longHistories = LongHistoryFile.load() ?? LongHistories()   // a day, kept across restarts
+    private var saveTimer: Timer?
     var onSnapshot: ((Snapshot) -> Void)?
     var onBandChange: ((LoadBand) -> Void)?
     private var band: LoadBand = .calm
@@ -21,11 +23,23 @@ final class AppState {
         }
     }
 
-    func start() { sampler.start() }
+    func start() {
+        sampler.start()
+        saveTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.saveHistory() }
+        }
+        saveTimer?.tolerance = 60
+    }
+
+    /// Render-only: stage a day of readings for screenshots.
+    func stage(longHistories staged: LongHistories) { longHistories = staged }
+
+    func saveHistory() { LongHistoryFile.save(longHistories) }
 
     private func receive(_ snap: Snapshot) {
         latest = snap
         histories.record(snap)
+        longHistories.record(snap)
         if let c = snap.cpu {
             cpuHistory.append(c.total)
             if cpuHistory.count > Self.historyLimit { cpuHistory.removeFirst(cpuHistory.count - Self.historyLimit) }

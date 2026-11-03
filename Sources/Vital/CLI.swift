@@ -7,6 +7,7 @@ import VitalCore
 enum CLI {
     static func runIfRequested() -> Bool {
         let args = CommandLine.arguments.dropFirst()
+        if AgentCLI.runIfRequested(Array(args)) { return true }
         if FanCLI.runIfRequested(args) { return true }
         if UpdateCLI.runIfRequested(args) { return true }
         if args.contains("--probe") { probe(); return true }

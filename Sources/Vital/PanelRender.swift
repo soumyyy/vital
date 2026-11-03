@@ -4,7 +4,7 @@ import VitalCore
 
 /// Renders the panel into a PNG without a display (layout check; glass is not drawn offscreen).
 /// Usage: Vital --render-panel out.png [--tab=Heat] [--expand-first] [--details] [--more] [--overview]
-///        [--cycle-tabs] [--appearance=light|dark] [--mock=calm|busy|struggling|memory-pressure|tile-limits] [--wait=seconds] [--max-height=pt]
+///        [--cycle-tabs] [--range=5min|1hr|24hr] [--appearance=light|dark] [--mock=calm|busy|struggling|memory-pressure|tile-limits] [--wait=seconds] [--max-height=pt]
 /// `--mock` edits a live reading to stage a state for screenshots (render only, never in the app).
 enum PanelRender {
     @MainActor
@@ -37,9 +37,19 @@ enum PanelRender {
                 h.down.append(max(0, 2_000_000 * sin(x / 7)), at: t); h.up.append(max(0, 200_000 * sin(x / 5)), at: t)
                 h.diskRead.append(max(0, 3_000_000 * sin(x / 11)), at: t); h.diskWrite.append(max(0, 1_000_000 * sin(x / 6)), at: t)
             }
+            var day = LongHistories()
+            for m in 0..<(24 * 60) {
+                let t = now.addingTimeInterval(Double(m - 24 * 60) * 60), x = Double(m)
+                day.cpu.append(0.2 + 0.15 * sin(x / 90) + (m % 240 < 20 ? 0.4 : 0), at: t)
+                day.memory.append(0.55 + 0.1 * sin(x / 300), at: t)
+                day.heat.append(42 + 8 * sin(x / 200), at: t)
+                day.down.append(max(0, 1_500_000 * sin(x / 40)), at: t); day.up.append(max(0, 150_000 * sin(x / 25)), at: t)
+            }
             state.onSnapshot = nil
+            state.stage(longHistories: day)
             model.histories = h
         }
+        if let r = value("range"), let range = HistoryRange.allCases.first(where: { $0.rawValue.replacingOccurrences(of: " ", with: "") == r }) { model.range = range }
         if args.contains("--details") { model.showDetails = true }
         if args.contains("--more") { model.showAll = true }
         if model.tab == .heat { model.fanController.refresh() }

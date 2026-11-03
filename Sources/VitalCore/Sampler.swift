@@ -190,11 +190,10 @@ public final class Sampler {
             }
         }
 
-        var network: NetworkReading?
+        let network = networkSampler.sample(at: started)          // a few counter reads: kept while closed for the 24 hour history
         var battery: BatteryReading?
         var blockers: [Int32: SleepBlock] = [:]
         if open {
-            network = networkSampler.sample(at: started)
             if lastBattery == nil || started.timeIntervalSince(lastBattery!.time) >= 5 {
                 lastBattery = (BatterySampler.read(), started)
             }

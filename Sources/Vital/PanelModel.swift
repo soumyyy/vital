@@ -39,11 +39,15 @@ struct PendingAction: Identifiable {
         }
     }
     var detail: String {
+        let closing = groups.count == 1 ? Self.processCount(groups[0].processes.count).map { "\($0) will close. " } ?? "" : ""
         switch kind {
-        case .quit: return "The app can ask you to save first."
-        case .force, .quitAllUnresponsive: return "Unsaved work will be lost."
+        case .quit: return closing + "The app can ask you to save first."
+        case .force, .quitAllUnresponsive: return closing + "Unsaved work will be lost."
         }
     }
+
+    /// "96 processes", or nil for a single process (nothing worth saying).
+    static func processCount(_ n: Int) -> String? { n > 1 ? "\(n) processes" : nil }
 }
 
 @MainActor
@@ -56,12 +60,15 @@ final class PanelModel: ObservableObject {
     @Published var showAll = false
     @Published var overview = true          // the page the panel opens on
     @Published var histories: Histories
+    @Published var range: HistoryRange = .fiveMinutes
     @Published var pending: PendingAction?
     @Published var toast: String?
 
     let icons = NSCache<NSString, NSImage>()
     private let appState: AppState
     private let actions = ProcessActions()
+    /// A day of CPU, memory, heat and network by the minute. Not published: it changes with every snapshot that already redraws the panel.
+    var longHistories: LongHistories { appState.longHistories }
     var storage: StorageStore { appState.storage }
     var fanController: FanClient { appState.fanController }
     var fanAvailability: FanControlAvailability { appState.fanController.availability }

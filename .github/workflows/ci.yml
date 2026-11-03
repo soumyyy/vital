@@ -36,3 +36,16 @@ jobs:
         run: |
           brew style --cask soumyyy/vital/vital
           brew audit --cask --online soumyyy/vital/vital
+
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test and pack the npm installer
+        working-directory: npm
+        run: |
+          npm test
+          npm pack --dry-run

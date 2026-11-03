@@ -24,16 +24,19 @@ Or with Homebrew:
 brew tap soumyyy/vital https://github.com/soumyyy/vital && brew install --cask vital
 ```
 
+Or with npm: `npx vital-mac install` downloads the notarized release, verifies its checksum and installs it.
+
 See [installation and removal](docs/INSTALL.md) for permissions and uninstalling.
 
 ## What it does
 
-- **Overview** at a glance: five-minute graphs for CPU, memory, disk and heat, plus storage, network and battery in one-line rows.
+- **Overview** at a glance: graphs for CPU, memory, disk and heat over 5 minutes, an hour or a day (disk: 5 minutes), plus storage, network and battery in one-line rows.
 - **Four vitals**: CPU, memory, storage and heat. Tap one to see which apps use the most of it. Colour appears only when something needs attention, and that vital's own view then names the app to blame, with a Quit button.
 - **Per-app breakdown.** Chrome and its helpers are one entry that expands to its processes. CPU is each app's share of the whole CPU, smoothed over five seconds. Hover a process for the Activity Monitor figure (100% is one core).
 - **Quit and Force Quit** with confirmation, protected system processes, and honest results, including processes stuck in the kernel that no signal can kill. Apps that stop responding surface at the top of every view.
 - **Details on demand**, closed by default: core split, memory pressure and swap, disk activity per app, temperatures, battery health and cycles, network speed, and which apps keep the Mac awake.
 - **Fan control** (optional): live speed and a manual speed slider on MacBooks with fans. See [fan control](docs/FAN-CONTROL.md).
+- **Command line for people and AI agents.** `vital status`, `vital apps` and `vital history` print text or JSON, read-only. See the [command reference](docs/CLI.md).
 - **Software updates** on request: *Update Software…* checks the latest GitHub release, verifies it and installs it.
 - Liquid Glass on macOS 26 and later, frosted material on macOS 14 and 15, opaque with Reduce Transparency.
 

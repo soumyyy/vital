@@ -82,3 +82,13 @@ git add Casks/vital.rb && git commit -m "Cask: 0.1.4" && git push
 ```
 
 The cask checksum is for `Vital.dmg`; the updater uses the ZIP checksum, which is different. Uninstalling runs `Vital --unregister-fan-helper`, so removal also drops the optional fan-control helper. Installation never grants fan-control approval; that stays in the app. Official Homebrew Cask submission can come later and is subject to Homebrew's acceptance rules.
+
+## npm
+
+`npm/` is the `vital-mac` installer package. It downloads the latest GitHub release at run time, so it needs a new publish only when its own code changes, not for every Vital release. Keep its `version` equal to the Vital version when you do publish:
+
+```sh
+cd npm && npm test && npm publish --access public
+```
+
+Publishing needs `npm login` as the package owner.

@@ -68,6 +68,8 @@ struct GroupRow: View {
     private var isOpen: Bool { model.expanded.contains(group.id) }
     private var hung: Bool { model.isUnresponsive(group) }
     private var expandable: Bool { !group.processes.isEmpty }
+    /// "96 processes" when an app is more than one process, so one row's figure is clearly the sum of its helpers.
+    private var processLabel: String? { group.isAggregate ? nil : PendingAction.processCount(group.processes.count) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -79,8 +81,13 @@ struct GroupRow: View {
                         Image(nsImage: model.icon(for: group)).resizable().frame(width: 20, height: 20)
                     }
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(group.name).font(Typo.mediumBold).lineLimit(1)
-                            .foregroundStyle(group.isAggregate ? .secondary : .primary)
+                        HStack(spacing: 6) {
+                            Text(group.name).font(Typo.mediumBold).lineLimit(1)
+                                .foregroundStyle(group.isAggregate ? .secondary : .primary)
+                            if let label = processLabel {
+                                Text(label).font(Typo.small).foregroundStyle(.tertiary).lineLimit(1).fixedSize()
+                            }
+                        }
                         if hung { Text("Not responding").font(Typo.small).foregroundStyle(Palette.red) }
                     }
                     Spacer(minLength: 4)

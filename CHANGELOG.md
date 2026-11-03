@@ -2,6 +2,13 @@
 
 All notable changes. Versions follow the GitHub releases.
 
+## Unreleased
+- **24 hour history.** Vital keeps a day of CPU, memory, heat and network by the minute (a small file, kept across restarts). The Overview graphs switch between 5 min, 1 hr and 24 hr, and the longer views show the average and peak.
+- **Clearer app rows.** An app made of many processes says so ("Google Chrome  96 processes"), and the Quit sheet says how many will close.
+- **Command line.** `vital status`, `vital apps` and `vital history` print text or JSON, read-only, for terminals and AI agents. See docs/CLI.md.
+- **npm.** `npx vital-mac install` downloads the notarized release, verifies its checksum and installs it.
+- Homebrew starts Vital after installing it.
+
 ## 0.1.4 (2026-11-03)
 - Fan control keeps working after you replace the app (DMG drag, Homebrew, restore). The helper is now trusted by who signed it, not by one exact build, so a newer Vital can talk to an older helper. On launch Vital also restarts the helper if it is not the one bundled with the app, and **Reconnect** restarts a helper that has stopped answering.
 

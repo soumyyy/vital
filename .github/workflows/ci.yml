@@ -31,7 +31,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Tap this repository
-        run: brew tap soumyyy/vital "$GITHUB_WORKSPACE"
+        run: |
+          brew tap soumyyy/vital "$GITHUB_WORKSPACE"
           brew trust --tap soumyyy/vital
       - name: Style and audit the cask
         run: |

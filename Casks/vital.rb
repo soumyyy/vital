@@ -1,6 +1,6 @@
 cask "vital" do
-  version "0.1.6"
-  sha256 "b7b8b64df2fc48e955c0a60f17d641016f3bd20d8c9a04fc295cc105bef89af0"
+  version "0.1.7"
+  sha256 "d2be665c2705336fc7709e89ce51f2e69e69b32cd3c0cdb3a434896ebc67d8bd"
 
   url "https://github.com/soumyyy/vital/releases/download/v#{version}/Vital.dmg"
   name "Vital"

@@ -21,13 +21,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
         run: Scripts/update-cask.sh "${TAG#v}"
-      - name: Audit the cask
-        run: |
-          brew tap soumyyy/vital "$GITHUB_WORKSPACE"
-          brew trust --tap soumyyy/vital
-          brew style --cask --except-cops Cask/InstallSteps soumyyy/vital/vital
-          brew audit --cask --online soumyyy/vital/vital
-      - name: Commit
+      - name: Commit the new cask locally
         env:
           TAG: ${{ github.event.release.tag_name }}
         run: |
@@ -35,6 +29,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Cask: ${TAG#v}" Casks/vital.rb
+      - name: Audit the cask
+        # Tapping clones the repository, so the new version has to be committed before this runs.
+        run: |
+          brew tap soumyyy/vital "$GITHUB_WORKSPACE"
+          brew trust --tap soumyyy/vital
+          brew style --cask --except-cops Cask/InstallSteps soumyyy/vital/vital
+          brew audit --cask --online soumyyy/vital/vital
+      - name: Push
+        run: |
           git pull --rebase origin main
           git push origin HEAD:main
 

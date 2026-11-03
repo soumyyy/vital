@@ -2,6 +2,10 @@
 
 All notable changes. Versions follow the GitHub releases.
 
+## 0.1.7 (2026-11-03)
+- Fan control comes back by itself after `brew upgrade` or a reinstall, which used to switch it off.
+- A cleaner app icon: the heartbeat sits straight on the icon, without the inner frosted tile.
+
 ## 0.1.6 (2026-11-03)
 - The Overview shows the last 5 minutes only, as before; the range picker from 0.1.5 is gone. The 24 hour record is still kept in the background for `vital history` and AI agents.
 

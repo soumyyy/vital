@@ -140,16 +140,3 @@ public enum LongHistoryFile {
         try? data.write(to: url, options: .atomic)
     }
 }
-
-/// How far back the Overview graphs look.
-public enum HistoryRange: String, CaseIterable, Sendable, Identifiable {
-    case fiveMinutes = "5 min", hour = "1 hr", day = "24 hr"
-    public var id: String { rawValue }
-    public var window: TimeInterval {
-        switch self { case .fiveMinutes: return 300; case .hour: return 3600; case .day: return 86_400 }
-    }
-    /// "the last hour", for spoken captions.
-    public var spoken: String {
-        switch self { case .fiveMinutes: return "last 5 minutes"; case .hour: return "last hour"; case .day: return "last 24 hours" }
-    }
-}

@@ -3,7 +3,7 @@
 All notable changes. Versions follow the GitHub releases.
 
 ## 0.1.5 (2026-11-03)
-- **24 hour history.** Vital keeps a day of CPU, memory, heat and network by the minute (a small file, kept across restarts). The Overview graphs switch between 5 min, 1 hr and 24 hr, and the longer views show the average and peak.
+- **24 hour history.** Vital keeps a day of CPU, memory, heat and network by the minute in a small file, for `vital history` and AI agents. The Overview still graphs the last 5 minutes.
 - **Clearer app rows.** An app made of many processes says so ("Google Chrome  96 processes"), and the Quit sheet says how many will close.
 - **Command line.** `vital status`, `vital apps` and `vital history` print text or JSON, read-only, for terminals and AI agents. See docs/CLI.md.
 - **npm.** `npx vital-mac install` downloads the notarized release, verifies its checksum and installs it.

@@ -10,7 +10,7 @@ final class AppState {
     private(set) var latest = Snapshot.empty
     private(set) var cpuHistory: [Double] = []
     private(set) var histories = Histories()
-    private(set) var longHistories = LongHistoryFile.load() ?? LongHistories()   // a day, kept across restarts
+    private(set) var longHistories = LongHistoryFile.load() ?? LongHistories()   // a day for the command line and AI agents; not shown in the panel
     private var saveTimer: Timer?
     var onSnapshot: ((Snapshot) -> Void)?
     var onBandChange: ((LoadBand) -> Void)?
@@ -30,9 +30,6 @@ final class AppState {
         }
         saveTimer?.tolerance = 60
     }
-
-    /// Render-only: stage a day of readings for screenshots.
-    func stage(longHistories staged: LongHistories) { longHistories = staged }
 
     func saveHistory() { LongHistoryFile.save(longHistories) }
 

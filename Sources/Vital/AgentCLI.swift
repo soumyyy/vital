@@ -26,8 +26,16 @@ enum AgentCLI {
         return true
     }
 
+    /// Read from this executable's own bundle: a `vital` link or an argv0 of "vital" leaves Bundle.main unset.
     static var version: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? VitalInfo.version
+        var size: UInt32 = 0
+        _NSGetExecutablePath(nil, &size)
+        var buffer = [CChar](repeating: 0, count: Int(size))
+        guard _NSGetExecutablePath(&buffer, &size) == 0, let real = realpath(buffer, nil) else { return VitalInfo.version }
+        defer { free(real) }
+        let contents = URL(fileURLWithPath: String(cString: real)).deletingLastPathComponent().deletingLastPathComponent()
+        let plist = NSDictionary(contentsOf: contents.appendingPathComponent("Info.plist"))
+        return plist?["CFBundleShortVersionString"] as? String ?? VitalInfo.version
     }
 
     private static func history(_ metric: HistoryMetric, _ window: TimeInterval, json: Bool) {
